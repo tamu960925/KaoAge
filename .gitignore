@@ -1,0 +1,8 @@
+# Codex
+.codex/*
+
+# Spec Kit
+.specify/*
+
+# macOS
+.DS_Store
