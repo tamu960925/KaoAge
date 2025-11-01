@@ -20,7 +20,7 @@ description: "Task list template for feature implementation"
 
 ## Path Conventions
 
-- `sdk-core/` — ML Kit face analysis primitives
+- `sdk-core/` — ML Kit face analysis and age/gender inference primitives
 - `sdk-bestshot/` — BestShot heuristics layered on core analysis
 - `samples/cashier-app/` — Host-controlled camera sample integrating the SDK
 - `docs/` — Architecture notes, compliance records

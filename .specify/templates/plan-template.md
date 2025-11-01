@@ -19,6 +19,7 @@
 
 **Language/Version**: Kotlin (JVM, Android API 29+) — document deviations explicitly  
 **Primary Dependencies**: ML Kit Face Detection (on-device), approved Jetpack libraries  
+**ML Outputs**: Face landmarks plus age/gender estimation — document model versions and quality bars  
 **Storage**: N/A (SDK MUST NOT persist raw images)  
 **Testing**: JUnit + Robolectric (tests written first per TDD)  
 **Target Platform**: Android 10+ host app integrating `sdk-core`/`sdk-bestshot`  
@@ -33,6 +34,7 @@
 
 - Kotlin-only source modules with Java interop annotations (`@JvmStatic`, `@JvmOverloads`, builders)
 - ML Kit Face Detection selected for all face analytics; no alternative detectors or cloud services
+- Age/gender inference uses approved on-device models (via `scripts/download_models.sh`) with documented calibration metrics
 - Camera session remains in the host app; plan details frame handoff and BestShot response contract
 - SDK outputs parcelable models with `toJson()`, face box, Euler angles, and required landmarks
 - External models sourced via `scripts/download_models.sh`, loaded through File/ByteBuffer/AFD paths
