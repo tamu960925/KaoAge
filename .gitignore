@@ -1,8 +1,12 @@
-# Codex
-.codex/*
+# Agent/secret
+.codex/
+.codex/**/auth.json
 
-# Spec Kit
-.specify/*
+# Spec Kit のキャッシュファイル
+.specify/out/
+.specify/cache/
 
-# macOS
-.DS_Store
+# ありがちな秘密ファイル
+*.env
+.env.*
+*.pem
