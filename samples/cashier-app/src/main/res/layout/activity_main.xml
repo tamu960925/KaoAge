@@ -82,12 +82,17 @@
             android:paddingTop="4dp"
             android:text="" />
 
-        <Button
-            android:id="@+id/resetBestShot"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/action_reset_bestshot" />
+    <Button
+        android:id="@+id/resetBestShot"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/action_reset_bestshot" />
     </LinearLayout>
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragmentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 </FrameLayout>

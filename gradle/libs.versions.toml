@@ -9,6 +9,7 @@ mlkit-face-detection = "16.1.5"
 kotlinx-serialization = "1.6.3"
 androidx-camera = "1.3.4"
 tflite = "2.13.0"
+androidx-fragment = "1.7.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
@@ -25,6 +26,7 @@ androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", versi
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "androidx-camera" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "androidx-camera" }
 tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tflite" }
+androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "androidx-fragment" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }
