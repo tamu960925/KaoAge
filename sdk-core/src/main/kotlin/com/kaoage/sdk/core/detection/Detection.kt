@@ -1,9 +1,6 @@
-@file:OptIn(ExperimentalGetImage::class)
-
 package com.kaoage.sdk.core.detection
 
 import android.annotation.SuppressLint
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
