@@ -22,28 +22,25 @@ import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.Implementation
-import org.robolectric.annotation.Implements
-import org.tensorflow.lite.Interpreter
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], shadows = [AgeGenderEngineTest.ShadowInterpreter::class])
+@Config(sdk = [33])
 class AgeGenderEngineTest {
 
     @AfterTest
     fun tearDown() {
-        ShadowInterpreter.reset()
+        QueuedInterpreterFactory.reset()
     }
 
     @Test
     fun estimate_usesInterpreterOutputs() = runBlocking {
-        ShadowInterpreter.enqueueResult(arrayOf(floatArrayOf(0.1f))) // 0.1 * 116 ≈ 11.6 years
-        ShadowInterpreter.enqueueResult(arrayOf(floatArrayOf(0.3f, 0.7f))) // male, female probabilities
+        QueuedInterpreterFactory.enqueueResult(arrayOf(floatArrayOf(0.1f))) // 0.1 * 116 ≈ 11.6 years
+        QueuedInterpreterFactory.enqueueResult(arrayOf(floatArrayOf(0.3f, 0.7f))) // male, female probabilities
 
         val engine = AgeGenderEngine(
             ageModel = ByteBuffer.allocateDirect(16),
             genderModel = ByteBuffer.allocateDirect(16),
-            interpreterFactory = DefaultInterpreterFactory(),
+            interpreterFactory = QueuedInterpreterFactory(),
             cropper = FakeFaceCropper
         )
 
@@ -77,8 +74,7 @@ class AgeGenderEngineTest {
             }
     }
 
-    @Implements(Interpreter::class)
-    class ShadowInterpreter {
+    private class QueuedInterpreterFactory : InterpreterFactory {
         companion object {
             private val queue: ArrayDeque<Array<FloatArray>> = ArrayDeque()
 
@@ -91,29 +87,28 @@ class AgeGenderEngineTest {
             }
         }
 
-        @Implementation
-        fun __constructor__(@Suppress("UNUSED_PARAMETER") model: ByteBuffer) {
-            // no-op
-        }
+        override fun create(model: ByteBuffer): TfLiteInterpreter {
+            return object : TfLiteInterpreter {
+                override fun run(input: Any, output: Any) {
+                    val tensors = if (queue.isEmpty()) {
+                        error("No queued outputs for interpreter invocation")
+                    } else {
+                        queue.removeFirst()
+                    }
+                    val target = output as? Array<*> ?: error("Unsupported output type: ${output::class}")
+                    target.forEachIndexed { index, buffer ->
+                        val destination = buffer as? FloatArray ?: error("Unsupported tensor container")
+                        val source = tensors.getOrNull(index) ?: FloatArray(destination.size)
+                        for (i in destination.indices) {
+                            destination[i] = source.getOrElse(i) { 0f }
+                        }
+                    }
+                }
 
-        @Implementation
-        fun run(input: Any, output: Any) {
-            val hasNext = queue.isNotEmpty()
-            require(hasNext) { "No queued outputs for interpreter invocation" }
-            val expected = queue.removeFirst()
-            val target = output as? Array<*> ?: error("Unsupported output type: ${output::class}")
-            target.forEachIndexed { index, buffer ->
-                val destination = buffer as? FloatArray ?: error("Unsupported tensor container")
-                val values = expected.getOrNull(index) ?: FloatArray(destination.size)
-                for (i in destination.indices) {
-                    destination[i] = values.getOrElse(i) { 0f }
+                override fun close() {
+                    // no-op
                 }
             }
-        }
-
-        @Implementation
-        fun close() {
-            // no-op
         }
     }
 }

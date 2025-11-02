@@ -16,7 +16,8 @@ import java.nio.channels.FileChannel
  * Exposes helpers usable from both Kotlin and Java callers.
  */
 object ModelAssetManager {
-    private const val AGE_MODEL_ASSET_NAME = "age_regression.tflite"
+    private const val AGE_MODEL_ASSET_NAME = "model_age_nonq.tflite"
+    private const val GENDER_MODEL_ASSET_NAME = "model_gender_nonq.tflite"
 
     /**
      * Maps the age regression model into memory for high-performance inference access.
@@ -27,6 +28,14 @@ object ModelAssetManager {
         mapAsset(context, AGE_MODEL_ASSET_NAME)
 
     /**
+     * Maps the gender classification model into memory for high-performance inference access.
+     */
+    @JvmStatic
+    @Throws(IOException::class)
+    fun loadGenderModelByteBuffer(context: Context): ByteBuffer =
+        mapAsset(context, GENDER_MODEL_ASSET_NAME)
+
+    /**
      * Returns true when the age regression model asset is bundled with the SDK.
      */
     @JvmStatic
@@ -34,10 +43,23 @@ object ModelAssetManager {
         context.assets.openFd(AGE_MODEL_ASSET_NAME).close()
     }.isSuccess
 
+    /**
+     * Returns true when the gender classification model asset is bundled with the SDK.
+     */
+    @JvmStatic
+    fun hasGenderModel(context: Context): Boolean = runCatching {
+        context.assets.openFd(GENDER_MODEL_ASSET_NAME).close()
+    }.isSuccess
+
     @JvmStatic
     @Throws(IOException::class)
     suspend fun copyAgeModelToCache(context: Context): File =
         copyAssetToCache(context, AGE_MODEL_ASSET_NAME)
+
+    @JvmStatic
+    @Throws(IOException::class)
+    suspend fun copyGenderModelToCache(context: Context): File =
+        copyAssetToCache(context, GENDER_MODEL_ASSET_NAME)
 
     private suspend fun copyAssetToCache(context: Context, assetName: String): File =
         withContext(Dispatchers.IO) {

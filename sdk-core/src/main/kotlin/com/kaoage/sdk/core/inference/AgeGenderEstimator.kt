@@ -40,10 +40,12 @@ class AgeGenderEngine(
 ) : AgeGenderEstimator {
 
     @Volatile
-    private var ageInterpreterRef: TfLiteInterpreter? = null
+    private var ageInterpreter: TfLiteInterpreter? = null
+    private val ageLock = Any()
 
     @Volatile
-    private var genderInterpreterRef: TfLiteInterpreter? = null
+    private var genderInterpreter: TfLiteInterpreter? = null
+    private val genderLock = Any()
 
     override suspend fun estimate(
         frame: FrameInput,
@@ -58,15 +60,11 @@ class AgeGenderEngine(
 
         val faceBitmap = cropper.crop(frame, detection) ?: return@withContext fallback(detection, config)
 
-        val ageInterpreter = obtainInterpreter(
-            cache = ::ageInterpreterRef,
-            model = ageModel
-        ) ?: return@withContext fallback(detection, config).also { faceBitmap.recycle() }
+        val ageInterpreter = obtainAgeInterpreter(ageModel)
+            ?: return@withContext fallback(detection, config).also { faceBitmap.recycle() }
 
-        val genderInterpreter = obtainInterpreter(
-            cache = ::genderInterpreterRef,
-            model = genderModel
-        ) ?: return@withContext fallback(detection, config).also { faceBitmap.recycle() }
+        val genderInterpreter = obtainGenderInterpreter(genderModel)
+            ?: return@withContext fallback(detection, config).also { faceBitmap.recycle() }
 
         val ageYears = runCatching { runAgeEstimator(ageInterpreter, faceBitmap) }.getOrNull()
         val genderScores = runCatching { runGenderEstimator(genderInterpreter, faceBitmap) }.getOrNull()
@@ -80,27 +78,22 @@ class AgeGenderEngine(
         )
     }
 
-    private fun obtainInterpreter(
-        cache: () -> TfLiteInterpreter?,
-        model: ByteBuffer
-    ): TfLiteInterpreter? {
-        val current = cache()
-        if (current != null) {
-            return current
+    private fun obtainAgeInterpreter(model: ByteBuffer): TfLiteInterpreter? {
+        val cached = ageInterpreter
+        if (cached != null) return cached
+        return synchronized(ageLock) {
+            ageInterpreter ?: interpreterFactory.create(model.duplicateBuffer()).also {
+                ageInterpreter = it
+            }
         }
-        return synchronized(this) {
-            val again = cache()
-            if (again != null) {
-                again
-            } else {
-                val duplicate = model.duplicateBuffer()
-                val created = interpreterFactory.create(duplicate)
-                if (cache === ::ageInterpreterRef.getter) {
-                    ageInterpreterRef = created
-                } else if (cache === ::genderInterpreterRef.getter) {
-                    genderInterpreterRef = created
-                }
-                created
+    }
+
+    private fun obtainGenderInterpreter(model: ByteBuffer): TfLiteInterpreter? {
+        val cached = genderInterpreter
+        if (cached != null) return cached
+        return synchronized(genderLock) {
+            genderInterpreter ?: interpreterFactory.create(model.duplicateBuffer()).also {
+                genderInterpreter = it
             }
         }
     }
@@ -219,11 +212,11 @@ class AgeGenderEngine(
     }
 }
 
-internal interface InterpreterFactory {
+interface InterpreterFactory {
     fun create(model: ByteBuffer): TfLiteInterpreter
 }
 
-internal interface TfLiteInterpreter : AutoCloseable {
+interface TfLiteInterpreter : AutoCloseable {
     fun run(input: Any, output: Any)
 }
 
@@ -252,11 +245,11 @@ internal object ImageProxyFaceCropper : FaceCropper {
     }
 }
 
-internal interface FaceCropper {
+interface FaceCropper {
     fun crop(frame: FrameInput, detection: DetectionResult): Bitmap?
 }
 
-internal class DefaultInterpreterFactory : InterpreterFactory {
+class DefaultInterpreterFactory : InterpreterFactory {
     override fun create(model: ByteBuffer): TfLiteInterpreter {
         return object : TfLiteInterpreter {
             private val delegate = org.tensorflow.lite.Interpreter(model)

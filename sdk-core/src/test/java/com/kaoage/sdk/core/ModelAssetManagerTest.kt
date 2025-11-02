@@ -26,6 +26,15 @@ class ModelAssetManagerTest {
     }
 
     @Test
+    fun loadGenderModel_whenAvailable() {
+        if (!ModelAssetManager.hasGenderModel(context)) {
+            return
+        }
+        val buffer = ModelAssetManager.loadGenderModelByteBuffer(context)
+        assertTrue(buffer.capacity() > 0, "Gender model buffer must not be empty")
+    }
+
+    @Test
     fun copyAgeModelToCache_whenAvailable() = runBlocking {
         if (!ModelAssetManager.hasAgeModel(context)) {
             return@runBlocking
@@ -33,6 +42,17 @@ class ModelAssetManagerTest {
         val cacheFile = ModelAssetManager.copyAgeModelToCache(context)
         assertTrue(cacheFile.exists(), "Cached age model should exist")
         val buffer = ModelAssetManager.loadAgeModelByteBuffer(context)
+        assertEquals(buffer.capacity().toLong(), cacheFile.length(), "Cache file length should match buffer size")
+    }
+
+    @Test
+    fun copyGenderModelToCache_whenAvailable() = runBlocking {
+        if (!ModelAssetManager.hasGenderModel(context)) {
+            return@runBlocking
+        }
+        val cacheFile = ModelAssetManager.copyGenderModelToCache(context)
+        assertTrue(cacheFile.exists(), "Cached gender model should exist")
+        val buffer = ModelAssetManager.loadGenderModelByteBuffer(context)
         assertEquals(buffer.capacity().toLong(), cacheFile.length(), "Cache file length should match buffer size")
     }
 }

@@ -11,5 +11,5 @@
 | AndroidX CameraX Lifecycle | 1.3.4 | Library | Google Maven | Apache-2.0 | N/A | Binds camera to lifecycle |
 | AndroidX CameraX View | 1.3.4 | Library | Google Maven | Apache-2.0 | N/A | Provides `PreviewView` helper |
 | TensorFlow Lite | 2.13.0 | Library | Maven Central | Apache-2.0 | N/A | Runs on-device age regression inference |
-| Age Regression Source (best_model.h5) | 2025-09-12 | Model | huggingface.co/Sharris/age_detection_regression | MIT | 1837be0488aebe6199bd17d0e27f5222b28b5a79d3af8cdeebdb9e9f6c631557 | Downloaded via `scripts/download_models.sh` |
-| Age Regression (TFLite) | user-generated | Model | Converted locally from best_model.h5 | MIT | (user computed) | Produce with `scripts/convert_age_model.py`; do not commit the artifact |
+| Age/Gender Age Model (non-quantized) | 2025-11-02 snapshot | Model | github.com/shubham0204/Age-Gender_Estimation_TF-Android/app/src/main/assets/model_age_nonq.tflite | MIT | 870609353f25a3f6af4f1b815ac4c09a4a086e2a2f5c1109e28286bb6d410efe | Download via `scripts/download_models.sh` |
+| Age/Gender Gender Model (non-quantized) | 2025-11-02 snapshot | Model | github.com/shubham0204/Age-Gender_Estimation_TF-Android/app/src/main/assets/model_gender_nonq.tflite | MIT | 7317b8e5e1014b5062970c61dcd0afa3293b5766cc89facbb43cd16d8e619cf1 | Download via `scripts/download_models.sh` |

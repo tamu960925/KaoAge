@@ -57,19 +57,32 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
 }
 
-private val ageRegressionModel =
-    rootProject.layout.projectDirectory.file("models/age_regression.tflite")
+private val ageModel =
+    rootProject.layout.projectDirectory.file("models/model_age_nonq.tflite")
+private val genderModel =
+    rootProject.layout.projectDirectory.file("models/model_gender_nonq.tflite")
 
-val verifyAgeRegressionModel by tasks.registering {
+val verifyAgeModel by tasks.registering {
     doLast {
-        if (!ageRegressionModel.asFile.exists()) {
+        if (!ageModel.asFile.exists()) {
             logger.warn(
-                "[kaoage] models/age_regression.tflite missing. Run scripts/convert_age_model.py to generate the TensorFlow Lite age regressor."
+                "[kaoage] models/model_age_nonq.tflite missing. Run scripts/download_models.sh to fetch the sanctioned age model."
+            )
+        }
+    }
+}
+
+val verifyGenderModel by tasks.registering {
+    doLast {
+        if (!genderModel.asFile.exists()) {
+            logger.warn(
+                "[kaoage] models/model_gender_nonq.tflite missing. Run scripts/download_models.sh to fetch the sanctioned gender model."
             )
         }
     }
 }
 
 tasks.named("preBuild") {
-    dependsOn(verifyAgeRegressionModel)
+    dependsOn(verifyAgeModel)
+    dependsOn(verifyGenderModel)
 }
