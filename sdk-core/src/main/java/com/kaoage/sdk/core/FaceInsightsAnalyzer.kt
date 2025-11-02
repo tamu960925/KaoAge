@@ -157,12 +157,29 @@ private object NamedLandmarkFactory {
                 point = LandmarkPoint(
                     x = landmark.position.x,
                     y = landmark.position.y,
-                    probability = null
+                    probability = landmarkConfidence(landmark)
                 )
             )
         )
     }
 }
+
+private fun landmarkConfidence(landmark: FaceLandmark): Float? = runCatching {
+    val method = landmark.javaClass.methods.firstOrNull { it.name == "getInFrameLikelihood" && it.parameterCount == 0 }
+        ?: return@runCatching null
+    val value = method.invoke(landmark)
+    val floatValue = when (value) {
+        is Float -> value
+        is Double -> value.toFloat()
+        else -> null
+    }
+    when {
+        floatValue == null -> null
+        floatValue.isNaN() || floatValue < 0f -> null
+        floatValue > 1f -> 1f
+        else -> floatValue
+    }
+}.getOrNull()
 
 internal object AgeGenderHeuristics {
     fun estimateAge(

@@ -75,27 +75,24 @@ data class LandmarkPresence(
     companion object {
         private const val MIN_CONFIDENCE = 0.5f
 
-        private fun probabilityFor(
-            landmarks: List<NamedLandmark>,
-            type: LandmarkType
-        ): Float? = landmarks
-            .firstOrNull { it.type == type }
-            ?.point
-            ?.probability
-            ?.takeIf { it in 0f..1f }
-
         fun fromLandmarks(landmarks: List<NamedLandmark>): LandmarkPresence =
             LandmarkPresence(
-                eyes = listOf(
-                    probabilityFor(landmarks, LandmarkType.LEFT_EYE),
-                    probabilityFor(landmarks, LandmarkType.RIGHT_EYE)
-                ).all { (it ?: 0f) >= MIN_CONFIDENCE },
-                nose = probabilityFor(landmarks, LandmarkType.NOSE_TIP)?.let { it >= MIN_CONFIDENCE } ?: false,
-                mouth = listOf(
-                    probabilityFor(landmarks, LandmarkType.MOUTH_LEFT),
-                    probabilityFor(landmarks, LandmarkType.MOUTH_RIGHT)
-                ).all { (it ?: 0f) >= MIN_CONFIDENCE }
+                eyes = hasLandmark(landmarks, LandmarkType.LEFT_EYE) &&
+                    hasLandmark(landmarks, LandmarkType.RIGHT_EYE),
+                nose = hasLandmark(landmarks, LandmarkType.NOSE_TIP),
+                mouth = hasLandmark(landmarks, LandmarkType.MOUTH_LEFT) &&
+                    hasLandmark(landmarks, LandmarkType.MOUTH_RIGHT)
             )
+        private fun hasLandmark(
+            landmarks: List<NamedLandmark>,
+            type: LandmarkType
+        ): Boolean = landmarks
+            .firstOrNull { it.type == type }
+            ?.point
+            ?.let { point ->
+                val probability = point.probability?.takeIf { it in 0f..1f }
+                probability == null || probability >= MIN_CONFIDENCE
+            } ?: false
     }
 }
 
