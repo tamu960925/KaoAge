@@ -1,5 +1,8 @@
 # KaoAge – AGENTS.md
 
+## Configuration
+The agent must respond **only in Japanese** for all outputs, explanations, and interactions.
+
 ## Tech guardrails
 - Language: Kotlin for SDK, **Java-friendly API** (@JvmStatic/@JvmOverloads, Builder/Callback).
 - Android 10+; camera control is **app-side**. SDK returns analysis + BestShot signals only.

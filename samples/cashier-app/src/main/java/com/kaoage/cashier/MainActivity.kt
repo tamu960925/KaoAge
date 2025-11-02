@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         cooldownMillis = 2000
     )
     private val bestShotEvaluator = BestShotEvaluator()
-    private val faceAnalyzer = FaceInsightsAnalyzer()
+    private lateinit var faceAnalyzer: FaceInsightsAnalyzer
 
     private var cameraProvider: ProcessCameraProvider? = null
 
@@ -68,6 +68,8 @@ class MainActivity : AppCompatActivity() {
             bestShotEvaluator.reset()
             bestShotText.text = ""
         }
+
+        faceAnalyzer = FaceInsightsAnalyzer(applicationContext)
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -105,7 +107,9 @@ class MainActivity : AppCompatActivity() {
         cameraProvider?.unbindAll()
         cameraProvider = null
         cameraExecutor.shutdown()
-        faceAnalyzer.close()
+        if (::faceAnalyzer.isInitialized) {
+            faceAnalyzer.close()
+        }
         super.onDestroy()
     }
 
@@ -201,7 +205,12 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.Default) {
             try {
-                val result: FaceInsightsResult? = faceAnalyzer.analyze(inputImage, sessionConfig, timestamp)
+                val result: FaceInsightsResult? = faceAnalyzer.analyze(
+                    image = inputImage,
+                    imageProxy = imageProxy,
+                    sessionConfig = sessionConfig,
+                    frameTimestampMillis = timestamp
+                )
                 val bestShot: BestShotSignal? = result?.let { bestShotEvaluator.evaluate(it, sessionConfig) }
                 withContext(Dispatchers.Main) {
                     updateUi(result, bestShot)

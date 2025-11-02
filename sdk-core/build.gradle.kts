@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.coroutines.play.services)
     implementation(libs.mlkit.face.detection)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.tensorflow.lite)
 
     testImplementation(kotlin("test"))
     testImplementation("org.robolectric:robolectric:4.12.1")
