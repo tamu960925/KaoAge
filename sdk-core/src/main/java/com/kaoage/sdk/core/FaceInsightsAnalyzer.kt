@@ -113,7 +113,10 @@ class FaceInsightsAnalyzer internal constructor(
             gender = gender,
             genderConfidence = genderConfidence,
             bestShotEligible = bestShotEvaluation.eligible,
-            bestShotReasons = bestShotEvaluation.reasons
+            bestShotReasons = bestShotEvaluation.reasons,
+            classifierLabel = mobilenetInference?.topLabel,
+            classifierConfidence = mobilenetInference?.topProbability,
+            landmarkPresence = LandmarkPresence.fromLandmarks(landmarks)
         )
     }
 

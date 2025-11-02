@@ -25,6 +25,7 @@ import com.kaoage.sdk.bestshot.BestShotEvaluator
 import com.kaoage.sdk.core.BestShotSignal
 import com.kaoage.sdk.core.FaceInsightsAnalyzer
 import com.kaoage.sdk.core.FaceInsightsResult
+import com.kaoage.sdk.core.LandmarkPresence
 import com.kaoage.sdk.core.ModelAssetManager
 import com.kaoage.sdk.core.SessionConfig
 import java.io.IOException
@@ -39,6 +40,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var previewView: PreviewView
     private lateinit var resultText: TextView
+    private lateinit var insightsText: TextView
+    private lateinit var classifierText: TextView
+    private lateinit var landmarkText: TextView
     private lateinit var bestShotText: TextView
     private lateinit var resetButton: Button
 
@@ -53,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var faceAnalyzer: FaceInsightsAnalyzer
 
     private var cameraProvider: ProcessCameraProvider? = null
+    private var lastBestShotResult: FaceInsightsResult? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +66,9 @@ class MainActivity : AppCompatActivity() {
         previewView = findViewById(R.id.previewView)
         previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE)
         resultText = findViewById(R.id.resultText)
+        insightsText = findViewById(R.id.insightsText)
+        classifierText = findViewById(R.id.classifierText)
+        landmarkText = findViewById(R.id.landmarkText)
         bestShotText = findViewById(R.id.bestShotText)
         resetButton = findViewById(R.id.resetBestShot)
 
@@ -110,6 +118,7 @@ class MainActivity : AppCompatActivity() {
         if (::faceAnalyzer.isInitialized) {
             faceAnalyzer.close()
         }
+        lastBestShotResult = null
         super.onDestroy()
     }
 
@@ -227,6 +236,9 @@ class MainActivity : AppCompatActivity() {
     private fun updateUi(result: FaceInsightsResult?, bestShot: BestShotSignal?) {
         if (result == null) {
             resultText.text = getString(R.string.status_no_face)
+            insightsText.text = ""
+            classifierText.text = ""
+            landmarkText.text = ""
             bestShotText.text = ""
             return
         }
@@ -239,6 +251,47 @@ class MainActivity : AppCompatActivity() {
             result.gender.name
         )
         resultText.text = text
+
+        val displayResult = if (bestShot != null) {
+            lastBestShotResult = result
+            result
+        } else {
+            lastBestShotResult
+        }
+
+        if (displayResult == null) {
+            insightsText.text = getString(R.string.status_bestshot_waiting)
+            classifierText.text = ""
+            landmarkText.text = ""
+        } else {
+            val ageConfidencePct = (displayResult.ageConfidence).coerceIn(0f, 1f) * 100f
+            val genderConfidencePct = (displayResult.genderConfidence).coerceIn(0f, 1f) * 100f
+            val insights = getString(
+                R.string.status_insights_template,
+                displayResult.ageBracket.name,
+                ageConfidencePct,
+                displayResult.gender.name,
+                genderConfidencePct
+            )
+            insightsText.text = insights
+
+            classifierText.text = displayResult.classifierLabel?.let { label ->
+                val normalizedLabel = label.replace('_', ' ').replace('-', ' ')
+                val confidence = (displayResult.classifierConfidence ?: 0f).coerceIn(0f, 1f) * 100f
+                getString(R.string.status_classifier_template, normalizedLabel, confidence)
+            } ?: getString(R.string.status_classifier_unknown)
+
+            val presence = displayResult.landmarkPresence ?: LandmarkPresence.fromLandmarks(displayResult.landmarks)
+            val eyesFlag = if (presence.eyes) getString(R.string.status_landmark_yes) else getString(R.string.status_landmark_no)
+            val noseFlag = if (presence.nose) getString(R.string.status_landmark_yes) else getString(R.string.status_landmark_no)
+            val mouthFlag = if (presence.mouth) getString(R.string.status_landmark_yes) else getString(R.string.status_landmark_no)
+            landmarkText.text = getString(
+                R.string.status_landmarks_template,
+                eyesFlag,
+                noseFlag,
+                mouthFlag
+            )
+        }
 
         bestShotText.text = when {
             bestShot != null -> getString(

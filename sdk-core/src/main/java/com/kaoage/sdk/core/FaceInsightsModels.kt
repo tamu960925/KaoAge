@@ -66,6 +66,23 @@ data class NamedLandmark(
 ) : Parcelable
 
 @Serializable
+@Parcelize
+data class LandmarkPresence(
+    val eyes: Boolean,
+    val nose: Boolean,
+    val mouth: Boolean
+) : Parcelable {
+    companion object {
+        fun fromLandmarks(landmarks: List<NamedLandmark>): LandmarkPresence =
+            LandmarkPresence(
+                eyes = landmarks.any { it.type == LandmarkType.LEFT_EYE || it.type == LandmarkType.RIGHT_EYE },
+                nose = landmarks.any { it.type == LandmarkType.NOSE_TIP },
+                mouth = landmarks.any { it.type == LandmarkType.MOUTH_LEFT || it.type == LandmarkType.MOUTH_RIGHT }
+            )
+    }
+}
+
+@Serializable
 enum class AgeBracket {
     @SerialName("CHILD")
     CHILD,
@@ -134,7 +151,10 @@ data class FaceInsightsResult(
     val gender: Gender,
     val genderConfidence: Float,
     val bestShotEligible: Boolean = false,
-    val bestShotReasons: List<BestShotReason> = emptyList()
+    val bestShotReasons: List<BestShotReason> = emptyList(),
+    val classifierLabel: String? = null,
+    val classifierConfidence: Float? = null,
+    val landmarkPresence: LandmarkPresence? = null
 ) : Parcelable {
     fun toJson(): String = FaceInsightsJson.formatter.encodeToString(this)
 

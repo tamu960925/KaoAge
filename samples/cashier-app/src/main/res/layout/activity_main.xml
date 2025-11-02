@@ -32,6 +32,27 @@
             android:textColor="@android:color/white" />
 
         <TextView
+            android:id="@+id/insightsText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="4dp"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:id="@+id/classifierText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="2dp"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:id="@+id/landmarkText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="2dp"
+            android:textColor="@android:color/white" />
+
+        <TextView
             android:id="@+id/bestShotText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
