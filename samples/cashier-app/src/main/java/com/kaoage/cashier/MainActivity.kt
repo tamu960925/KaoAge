@@ -42,7 +42,11 @@ class MainActivity : AppCompatActivity() {
 
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val isAnalyzing = AtomicBoolean(false)
-    private val sessionConfig = SessionConfig(cooldownMillis = 2000)
+    private val sessionConfig = SessionConfig(
+        minFaceConfidence = 0.5f,
+        minFaceSizeRatio = 0.05f,
+        cooldownMillis = 2000
+    )
     private val bestShotEvaluator = BestShotEvaluator()
     private val faceAnalyzer = FaceInsightsAnalyzer()
 
@@ -53,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         previewView = findViewById(R.id.previewView)
+        previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE)
         resultText = findViewById(R.id.resultText)
         bestShotText = findViewById(R.id.bestShotText)
         resetButton = findViewById(R.id.resetBestShot)
