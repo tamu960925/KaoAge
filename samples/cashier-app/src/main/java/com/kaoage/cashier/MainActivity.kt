@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.Surface
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -11,9 +12,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import androidx.camera.view.CameraController
-import androidx.camera.view.LifecycleCameraController
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -50,7 +52,7 @@ class MainActivity : AppCompatActivity() {
     private val bestShotEvaluator = BestShotEvaluator()
     private val faceAnalyzer = FaceInsightsAnalyzer()
 
-    private var cameraController: LifecycleCameraController? = null
+    private var cameraProvider: ProcessCameraProvider? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,9 +102,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        cameraController?.clearImageAnalysisAnalyzer()
-        cameraController?.unbind()
-        cameraController = null
+        cameraProvider?.unbindAll()
+        cameraProvider = null
         cameraExecutor.shutdown()
         faceAnalyzer.close()
         super.onDestroy()
@@ -130,14 +131,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
-        val controller = LifecycleCameraController(this).apply {
-            cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-            setEnabledUseCases(CameraController.IMAGE_ANALYSIS or CameraController.IMAGE_CAPTURE)
-            setImageAnalysisAnalyzer(cameraExecutor, ::analyzeFrame)
+        val providerFuture = ProcessCameraProvider.getInstance(this)
+        providerFuture.addListener({
+            val provider = providerFuture.get()
+            cameraProvider = provider
+            bindCameraUseCases(provider)
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun bindCameraUseCases(provider: ProcessCameraProvider) {
+        provider.unbindAll()
+
+        val rotation = previewView.display?.rotation ?: Surface.ROTATION_0
+
+        val preview = Preview.Builder()
+            .setTargetRotation(rotation)
+            .build()
+            .apply { setSurfaceProvider(previewView.surfaceProvider) }
+
+        val analysis = ImageAnalysis.Builder()
+            .setTargetRotation(rotation)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .apply { setAnalyzer(cameraExecutor, ::analyzeFrame) }
+
+        try {
+            provider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_FRONT_CAMERA,
+                preview,
+                analysis
+            )
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to bind camera use cases", t)
+            resultText.text = getString(R.string.status_no_face)
         }
-        previewView.controller = controller
-        controller.bindToLifecycle(this)
-        cameraController = controller
     }
 
     @ExperimentalGetImage
