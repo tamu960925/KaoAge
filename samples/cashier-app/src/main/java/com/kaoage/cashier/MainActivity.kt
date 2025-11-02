@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
     private fun startCamera() {
         val controller = LifecycleCameraController(this).apply {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-            setEnabledUseCases(CameraController.IMAGE_ANALYSIS)
+            setEnabledUseCases(CameraController.IMAGE_ANALYSIS or CameraController.IMAGE_CAPTURE)
             setImageAnalysisAnalyzer(cameraExecutor, ::analyzeFrame)
         }
         previewView.controller = controller
