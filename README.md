@@ -80,7 +80,7 @@ override fun analyze(imageProxy: ImageProxy) {
 
 ## サンプルアプリ
 
-`samples/cashier-app` フォルダーには、自己レジ/対面レジの両シナリオを想定したデモが含まれています。CameraX のセットアップ、結果オーバーレイ、ベストショット通知などの参照実装としてご利用ください。
+`samples/cashier-app` フォルダーには、sdk-core, sdk-bestshotの利用デモが含まれています。CameraX のセットアップ、結果オーバーレイ、ベストショット通知などの参照実装としてご利用ください。
 
 ## テストと CI
 
