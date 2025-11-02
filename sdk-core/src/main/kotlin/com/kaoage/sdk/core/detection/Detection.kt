@@ -17,6 +17,7 @@ import com.kaoage.sdk.core.model.LandmarkType
 import com.kaoage.sdk.core.model.NormalizedPoint
 import kotlinx.coroutines.tasks.await
 import kotlin.math.max
+import com.google.mlkit.vision.face.FaceLandmark as MlKitLandmark
 
 /** Simple frame abstraction to decouple session logic from CameraX specifics. */
 data class FrameInput(
@@ -109,15 +110,28 @@ class MlKitFaceAnalyzer : FaceDetector {
                 LandmarkType.MOUTH_RIGHT -> face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.MOUTH_RIGHT)
             }
             val position = landmark?.position
-            val probability = landmark?.inFrameLikelihood
-                ?.takeIf { it.isFinite() && it >= 0f }
-                ?.coerceAtMost(1f)
+            val probability = landmarkConfidence(landmark)
             NormalizedPoint(
                 x = ((position?.x ?: 0f) / imageWidth.toFloat()).coerceIn(0f, 1f),
                 y = ((position?.y ?: 0f) / imageHeight.toFloat()).coerceIn(0f, 1f),
                 probability = probability
             )
         }
+    }
+
+    private fun landmarkConfidence(landmark: MlKitLandmark?): Float? {
+        landmark ?: return null
+        return runCatching {
+            val method = landmark.javaClass.getMethod("getInFrameLikelihood")
+            val value = method.invoke(landmark)
+            when (value) {
+                is Float -> value
+                is Double -> value.toFloat()
+                else -> null
+            }
+        }.getOrNull()
+            ?.takeIf { it.isFinite() && it >= 0f }
+            ?.coerceAtMost(1f)
     }
 
     private fun detectionConfidence(
