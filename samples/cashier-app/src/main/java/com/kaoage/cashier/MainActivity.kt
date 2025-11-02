@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.mlkit.vision.common.InputImage
 import com.kaoage.sdk.bestshot.BestShotEvaluator
+import com.kaoage.sdk.core.AgeBracket
 import com.kaoage.sdk.core.BestShotSignal
 import com.kaoage.sdk.core.FaceInsightsAnalyzer
 import com.kaoage.sdk.core.FaceInsightsResult
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var landmarkText: TextView
     private lateinit var bestShotText: TextView
     private lateinit var resetButton: Button
+    private lateinit var jsonOverlay: TextView
 
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val isAnalyzing = AtomicBoolean(false)
@@ -58,6 +60,7 @@ class MainActivity : AppCompatActivity() {
 
     private var cameraProvider: ProcessCameraProvider? = null
     private var lastBestShotResult: FaceInsightsResult? = null
+    private var awaitingBestShotOverlay: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,10 +74,17 @@ class MainActivity : AppCompatActivity() {
         landmarkText = findViewById(R.id.landmarkText)
         bestShotText = findViewById(R.id.bestShotText)
         resetButton = findViewById(R.id.resetBestShot)
+        jsonOverlay = findViewById(R.id.jsonOverlay)
 
         resetButton.setOnClickListener {
             bestShotEvaluator.reset()
             bestShotText.text = ""
+            insightsText.text = getString(R.string.status_bestshot_waiting)
+            classifierText.text = ""
+            landmarkText.text = ""
+            jsonOverlay.visibility = View.GONE
+            lastBestShotResult = null
+            awaitingBestShotOverlay = true
         }
 
         faceAnalyzer = FaceInsightsAnalyzer(applicationContext)
@@ -119,6 +129,7 @@ class MainActivity : AppCompatActivity() {
             faceAnalyzer.close()
         }
         lastBestShotResult = null
+        awaitingBestShotOverlay = false
         super.onDestroy()
     }
 
@@ -240,6 +251,9 @@ class MainActivity : AppCompatActivity() {
             classifierText.text = ""
             landmarkText.text = ""
             bestShotText.text = ""
+            if (!awaitingBestShotOverlay) {
+                jsonOverlay.visibility = View.GONE
+            }
             return
         }
 
@@ -263,11 +277,16 @@ class MainActivity : AppCompatActivity() {
             insightsText.text = getString(R.string.status_bestshot_waiting)
             classifierText.text = ""
             landmarkText.text = ""
+            if (!awaitingBestShotOverlay) {
+                jsonOverlay.visibility = View.GONE
+            }
         } else {
+            val estimatedAge = displayResult.estimatedAgeYears ?: AgeHeuristics.estimationFor(displayResult.ageBracket)
             val ageConfidencePct = (displayResult.ageConfidence).coerceIn(0f, 1f) * 100f
             val genderConfidencePct = (displayResult.genderConfidence).coerceIn(0f, 1f) * 100f
             val insights = getString(
                 R.string.status_insights_template,
+                estimatedAge,
                 displayResult.ageBracket.name,
                 ageConfidencePct,
                 displayResult.gender.name,
@@ -275,11 +294,12 @@ class MainActivity : AppCompatActivity() {
             )
             insightsText.text = insights
 
-            classifierText.text = displayResult.classifierLabel?.let { label ->
+            val classifierTextValue = displayResult.classifierLabel?.let { label ->
                 val normalizedLabel = label.replace('_', ' ').replace('-', ' ')
                 val confidence = (displayResult.classifierConfidence ?: 0f).coerceIn(0f, 1f) * 100f
                 getString(R.string.status_classifier_template, normalizedLabel, confidence)
             } ?: getString(R.string.status_classifier_unknown)
+            classifierText.text = classifierTextValue
 
             val presence = displayResult.landmarkPresence ?: LandmarkPresence.fromLandmarks(displayResult.landmarks)
             val eyesFlag = if (presence.eyes) getString(R.string.status_landmark_yes) else getString(R.string.status_landmark_no)
@@ -305,10 +325,25 @@ class MainActivity : AppCompatActivity() {
             )
             else -> ""
         }
+
+        if (bestShot != null && awaitingBestShotOverlay) {
+            jsonOverlay.text = result.toJson()
+            jsonOverlay.visibility = View.VISIBLE
+            awaitingBestShotOverlay = false
+        }
     }
 
     companion object {
         private const val REQUEST_CAMERA_PERMISSION = 100
         private const val TAG = "CashierMain"
+    }
+}
+
+private object AgeHeuristics {
+    fun estimationFor(bracket: AgeBracket): Float = when (bracket) {
+        AgeBracket.CHILD -> 6f
+        AgeBracket.TEEN -> 15f
+        AgeBracket.ADULT -> 32f
+        AgeBracket.SENIOR -> 65f
     }
 }

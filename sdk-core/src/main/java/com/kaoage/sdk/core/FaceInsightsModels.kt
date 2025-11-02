@@ -154,7 +154,8 @@ data class FaceInsightsResult(
     val bestShotReasons: List<BestShotReason> = emptyList(),
     val classifierLabel: String? = null,
     val classifierConfidence: Float? = null,
-    val landmarkPresence: LandmarkPresence? = null
+    val landmarkPresence: LandmarkPresence? = null,
+    val estimatedAgeYears: Float? = null
 ) : Parcelable {
     fun toJson(): String = FaceInsightsJson.formatter.encodeToString(this)
 

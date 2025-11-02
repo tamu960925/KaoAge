@@ -18,7 +18,8 @@ internal class MobileNetAgeGenderEstimator(private val context: Context) : Close
         val gender: Gender?,
         val genderConfidence: Float?,
         val topLabel: String?,
-        val topProbability: Float?
+        val topProbability: Float?,
+        val estimatedAgeYears: Float?
     )
 
     fun infer(
@@ -49,13 +50,15 @@ internal class MobileNetAgeGenderEstimator(private val context: Context) : Close
         val target = match ?: result.topK.firstOrNull() ?: return null
         val age = inferAge(target)
         val gender = inferGender(target)
+        val numericalAge = inferAgeYears(target)
         return Inference(
             ageBracket = age?.first,
             ageConfidence = age?.second ?: target.second,
             gender = gender?.first,
             genderConfidence = gender?.second ?: target.second,
             topLabel = target.first,
-            topProbability = target.second
+            topProbability = target.second,
+            estimatedAgeYears = numericalAge
         )
     }
 
@@ -96,6 +99,21 @@ internal class MobileNetAgeGenderEstimator(private val context: Context) : Close
             else -> null
         }
         return bracket?.let { it to confidence }
+    }
+
+    private fun inferAgeYears(top: Pair<String, Float>): Float? {
+        val label = top.first.lowercase()
+        return when {
+            AGE_CHILD_KEYWORDS.any { label.contains(it) } -> 4f
+            AGE_TEEN_KEYWORDS.any { label.contains(it) } -> 15f
+            label.contains("twenties") -> 25f
+            label.contains("thirties") -> 35f
+            label.contains("forties") -> 45f
+            label.contains("fifties") -> 55f
+            AGE_SENIOR_KEYWORDS.any { label.contains(it) } -> 65f
+            AGE_ADULT_KEYWORDS.any { label.contains(it) } -> 35f
+            else -> null
+        }
     }
 
     private fun inferGender(top: Pair<String, Float>): Pair<Gender, Float>? {

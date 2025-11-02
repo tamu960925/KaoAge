@@ -11,6 +11,19 @@
         android:layout_gravity="center"
         android:keepScreenOn="true" />
 
+    <TextView
+        android:id="@+id/jsonOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#CC000000"
+        android:padding="16dp"
+        android:textColor="@android:color/white"
+        android:textSize="12sp"
+        android:visibility="gone"
+        android:maxLines="4"
+        android:ellipsize="end" />
+
     <LinearLayout
         android:id="@+id/statusContainer"
         android:layout_width="match_parent"

@@ -116,7 +116,8 @@ class FaceInsightsAnalyzer internal constructor(
             bestShotReasons = bestShotEvaluation.reasons,
             classifierLabel = mobilenetInference?.topLabel,
             classifierConfidence = mobilenetInference?.topProbability,
-            landmarkPresence = LandmarkPresence.fromLandmarks(landmarks)
+            landmarkPresence = LandmarkPresence.fromLandmarks(landmarks),
+            estimatedAgeYears = mobilenetInference?.estimatedAgeYears
         )
     }
 
