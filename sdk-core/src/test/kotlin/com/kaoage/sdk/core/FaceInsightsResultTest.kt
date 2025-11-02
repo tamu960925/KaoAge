@@ -6,9 +6,11 @@ import com.kaoage.sdk.core.model.BoundingBox
 import com.kaoage.sdk.core.model.EulerAngles
 import com.kaoage.sdk.core.model.FaceInsightsResult
 import com.kaoage.sdk.core.model.GenderLabel
+import com.kaoage.sdk.core.model.LandmarkPresence
 import com.kaoage.sdk.core.model.LandmarkSet
 import com.kaoage.sdk.core.model.LandmarkType
 import com.kaoage.sdk.core.model.NormalizedPoint
+import com.kaoage.sdk.core.model.NamedLandmark
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -70,6 +72,23 @@ class FaceInsightsResultTest {
         }.exceptionOrNull()
 
         assertTrue(exception is IllegalArgumentException)
+    }
+
+    @Test
+    fun `landmark presence respects probability threshold`() {
+        val landmarks = listOf(
+            NamedLandmark(LandmarkType.LEFT_EYE, NormalizedPoint(0.3f, 0.3f, 0.9f)),
+            NamedLandmark(LandmarkType.RIGHT_EYE, NormalizedPoint(0.4f, 0.3f, 0.2f)),
+            NamedLandmark(LandmarkType.NOSE_TIP, NormalizedPoint(0.5f, 0.5f, 0.4f)),
+            NamedLandmark(LandmarkType.MOUTH_LEFT, NormalizedPoint(0.4f, 0.7f, 0.6f)),
+            NamedLandmark(LandmarkType.MOUTH_RIGHT, NormalizedPoint(0.6f, 0.7f, 0.65f))
+        )
+
+        val presence = LandmarkPresence.fromLandmarks(landmarks)
+
+        assertTrue(!presence.eyes, "Both eyes must have high confidence to report YES")
+        assertTrue(!presence.nose, "Nose should be NO when confidence is low")
+        assertTrue(presence.mouth, "Mouth should be YES when both corners are confident")
     }
 
     private fun minimumLandmarks(): Map<LandmarkType, NormalizedPoint> = mapOf(

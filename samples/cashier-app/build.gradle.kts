@@ -44,9 +44,15 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.coroutines.android)
     implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.face.detection)
+    implementation(libs.androidx.fragment.ktx)
 
     testImplementation(kotlin("test"))
     testImplementation("org.robolectric:robolectric:4.12.1")
+    testImplementation("androidx.test:core:1.6.1")
 }
 
 android {

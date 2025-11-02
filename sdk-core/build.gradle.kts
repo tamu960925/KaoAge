@@ -24,6 +24,8 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    sourceSets["main"].assets.srcDir(rootProject.layout.projectDirectory.dir("models"))
+
     packaging {
         resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
     }
@@ -48,8 +50,39 @@ dependencies {
     implementation(libs.coroutines.play.services)
     implementation(libs.mlkit.face.detection)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.tensorflow.lite)
 
     testImplementation(kotlin("test"))
     testImplementation("org.robolectric:robolectric:4.12.1")
     testImplementation("androidx.test:core:1.6.1")
+}
+
+private val ageModel =
+    rootProject.layout.projectDirectory.file("models/model_age_nonq.tflite")
+private val genderModel =
+    rootProject.layout.projectDirectory.file("models/model_gender_nonq.tflite")
+
+val verifyAgeModel by tasks.registering {
+    doLast {
+        if (!ageModel.asFile.exists()) {
+            logger.warn(
+                "[kaoage] models/model_age_nonq.tflite missing. Run scripts/download_models.sh to fetch the sanctioned age model."
+            )
+        }
+    }
+}
+
+val verifyGenderModel by tasks.registering {
+    doLast {
+        if (!genderModel.asFile.exists()) {
+            logger.warn(
+                "[kaoage] models/model_gender_nonq.tflite missing. Run scripts/download_models.sh to fetch the sanctioned gender model."
+            )
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(verifyAgeModel)
+    dependsOn(verifyGenderModel)
 }

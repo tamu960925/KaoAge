@@ -1,9 +1,6 @@
-@file:OptIn(ExperimentalGetImage::class)
-
 package com.kaoage.sdk.core.detection
 
 import android.annotation.SuppressLint
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
@@ -17,6 +14,7 @@ import com.kaoage.sdk.core.model.LandmarkType
 import com.kaoage.sdk.core.model.NormalizedPoint
 import kotlinx.coroutines.tasks.await
 import kotlin.math.max
+import com.google.mlkit.vision.face.FaceLandmark as MlKitLandmark
 
 /** Simple frame abstraction to decouple session logic from CameraX specifics. */
 data class FrameInput(
@@ -75,7 +73,7 @@ class MlKitFaceAnalyzer : FaceDetector {
                     imageHeight = imageHeight
                 ),
                 eulerAngles = EulerAngles(face.headEulerAngleY, face.headEulerAngleX, face.headEulerAngleZ),
-                landmarks = LandmarkSet(landmarksFrom(face)),
+                landmarks = LandmarkSet(landmarksFrom(face, imageWidth, imageHeight)),
                 confidence = confidence
             )
         }
@@ -94,7 +92,11 @@ class MlKitFaceAnalyzer : FaceDetector {
             .enableTracking()
             .build()
 
-    private fun landmarksFrom(face: com.google.mlkit.vision.face.Face): Map<LandmarkType, NormalizedPoint> {
+    private fun landmarksFrom(
+        face: com.google.mlkit.vision.face.Face,
+        imageWidth: Int,
+        imageHeight: Int
+    ): Map<LandmarkType, NormalizedPoint> {
         val required = LandmarkType.values()
         return required.associateWith { type ->
             val landmark = when (type) {
@@ -105,12 +107,28 @@ class MlKitFaceAnalyzer : FaceDetector {
                 LandmarkType.MOUTH_RIGHT -> face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.MOUTH_RIGHT)
             }
             val position = landmark?.position
+            val probability = landmarkConfidence(landmark)
             NormalizedPoint(
-                x = (position?.x ?: 0f) / face.boundingBox.width().coerceAtLeast(1),
-                y = (position?.y ?: 0f) / face.boundingBox.height().coerceAtLeast(1),
-                probability = null
+                x = ((position?.x ?: 0f) / imageWidth.toFloat()).coerceIn(0f, 1f),
+                y = ((position?.y ?: 0f) / imageHeight.toFloat()).coerceIn(0f, 1f),
+                probability = probability
             )
         }
+    }
+
+    private fun landmarkConfidence(landmark: MlKitLandmark?): Float? {
+        landmark ?: return null
+        return runCatching {
+            val method = landmark.javaClass.getMethod("getInFrameLikelihood")
+            val value = method.invoke(landmark)
+            when (value) {
+                is Float -> value
+                is Double -> value.toFloat()
+                else -> null
+            }
+        }.getOrNull()
+            ?.takeIf { it.isFinite() && it >= 0f }
+            ?.coerceAtMost(1f)
     }
 
     private fun detectionConfidence(

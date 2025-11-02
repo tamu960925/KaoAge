@@ -1,10 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.kaoage.cashier">
 
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
+        android:name=".CashierApp"
         android:allowBackup="false"
-        android:label="KaoAge Cashier"
-        android:supportsRtl="true">
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.KaoAgeCashier">
         <activity
             android:name="com.kaoage.cashier.MainActivity"
             android:exported="true">
