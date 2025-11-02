@@ -56,6 +56,46 @@ data class NormalizedPoint(
     }
 }
 
+@Parcelize
+@Serializable
+data class NamedLandmark(
+    val type: LandmarkType,
+    val point: NormalizedPoint
+) : Parcelable
+
+@Parcelize
+@Serializable
+data class LandmarkPresence(
+    val eyes: Boolean,
+    val nose: Boolean,
+    val mouth: Boolean
+) : Parcelable {
+    companion object {
+        private const val MIN_CONFIDENCE = 0.5f
+
+        @JvmStatic
+        fun fromLandmarks(landmarks: Iterable<NamedLandmark>): LandmarkPresence {
+            val collection = if (landmarks is Collection) landmarks else landmarks.toList()
+            return LandmarkPresence(
+                eyes = hasConfidence(collection, LandmarkType.LEFT_EYE) &&
+                    hasConfidence(collection, LandmarkType.RIGHT_EYE),
+                nose = hasConfidence(collection, LandmarkType.NOSE_TIP),
+                mouth = hasConfidence(collection, LandmarkType.MOUTH_LEFT) &&
+                    hasConfidence(collection, LandmarkType.MOUTH_RIGHT)
+            )
+        }
+
+        private fun hasConfidence(
+            landmarks: Iterable<NamedLandmark>,
+            type: LandmarkType
+        ): Boolean {
+            val match = landmarks.firstOrNull { it.type == type }?.point ?: return false
+            val probability = match.probability?.takeIf { it in 0f..1f }
+            return probability == null || probability >= MIN_CONFIDENCE
+        }
+    }
+}
+
 @Serializable
 enum class LandmarkType {
     @SerialName("LEFT_EYE") LEFT_EYE,
