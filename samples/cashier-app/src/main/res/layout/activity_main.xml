@@ -11,18 +11,27 @@
         android:layout_gravity="center"
         android:keepScreenOn="true" />
 
-    <TextView
-        android:id="@+id/jsonOverlay"
+    <ScrollView
+        android:id="@+id/jsonOverlayContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
         android:background="#CC000000"
         android:padding="16dp"
-        android:textColor="@android:color/white"
-        android:textSize="12sp"
         android:visibility="gone"
-        android:maxLines="4"
-        android:ellipsize="end" />
+        android:maxHeight="280dp"
+        android:fadeScrollbars="false"
+        android:scrollbars="vertical">
+
+        <TextView
+            android:id="@+id/jsonOverlayText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp"
+            android:textIsSelectable="true" />
+    </ScrollView>
 
     <LinearLayout
         android:id="@+id/statusContainer"

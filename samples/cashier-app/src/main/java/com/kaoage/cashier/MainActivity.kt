@@ -46,7 +46,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var landmarkText: TextView
     private lateinit var bestShotText: TextView
     private lateinit var resetButton: Button
-    private lateinit var jsonOverlay: TextView
+    private lateinit var jsonOverlayContainer: View
+    private lateinit var jsonOverlayText: TextView
 
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val isAnalyzing = AtomicBoolean(false)
@@ -74,7 +75,13 @@ class MainActivity : AppCompatActivity() {
         landmarkText = findViewById(R.id.landmarkText)
         bestShotText = findViewById(R.id.bestShotText)
         resetButton = findViewById(R.id.resetBestShot)
-        jsonOverlay = findViewById(R.id.jsonOverlay)
+        jsonOverlayContainer = findViewById(R.id.jsonOverlayContainer)
+        jsonOverlayText = findViewById(R.id.jsonOverlayText)
+        jsonOverlayText.movementMethod = android.text.method.ScrollingMovementMethod()
+        jsonOverlayContainer.setOnClickListener {
+            jsonOverlayContainer.visibility = View.GONE
+            awaitingBestShotOverlay = false
+        }
 
         resetButton.setOnClickListener {
             bestShotEvaluator.reset()
@@ -82,7 +89,7 @@ class MainActivity : AppCompatActivity() {
             insightsText.text = getString(R.string.status_bestshot_waiting)
             classifierText.text = ""
             landmarkText.text = ""
-            jsonOverlay.visibility = View.GONE
+            jsonOverlayContainer.visibility = View.GONE
             lastBestShotResult = null
             awaitingBestShotOverlay = true
         }
@@ -252,7 +259,7 @@ class MainActivity : AppCompatActivity() {
             landmarkText.text = ""
             bestShotText.text = ""
             if (!awaitingBestShotOverlay) {
-                jsonOverlay.visibility = View.GONE
+            jsonOverlayContainer.visibility = View.GONE
             }
             return
         }
@@ -278,7 +285,7 @@ class MainActivity : AppCompatActivity() {
             classifierText.text = ""
             landmarkText.text = ""
             if (!awaitingBestShotOverlay) {
-                jsonOverlay.visibility = View.GONE
+            jsonOverlayContainer.visibility = View.GONE
             }
         } else {
             val estimatedAge = displayResult.estimatedAgeYears ?: AgeHeuristics.estimationFor(displayResult.ageBracket)
@@ -327,8 +334,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (bestShot != null && awaitingBestShotOverlay) {
-            jsonOverlay.text = result.toJson()
-            jsonOverlay.visibility = View.VISIBLE
+            jsonOverlayText.text = result.toJson()
+            jsonOverlayContainer.visibility = View.VISIBLE
             awaitingBestShotOverlay = false
         }
     }
