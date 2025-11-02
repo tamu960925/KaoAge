@@ -155,15 +155,30 @@ class MainActivity : AppCompatActivity() {
             .build()
             .apply { setAnalyzer(cameraExecutor, ::analyzeFrame) }
 
-        try {
-            provider.bindToLifecycle(
-                this,
-                CameraSelector.DEFAULT_FRONT_CAMERA,
-                preview,
-                analysis
-            )
-        } catch (t: Throwable) {
-            Log.e(TAG, "Failed to bind camera use cases", t)
+        val selectors = listOf(
+            CameraSelector.DEFAULT_FRONT_CAMERA,
+            CameraSelector.DEFAULT_BACK_CAMERA
+        ).distinct()
+
+        var bound = false
+        for (selector in selectors) {
+            try {
+                provider.bindToLifecycle(
+                    this,
+                    selector,
+                    preview,
+                    analysis
+                )
+                bound = true
+                Log.d(TAG, "Camera bound with selector: $selector")
+                break
+            } catch (illegal: IllegalArgumentException) {
+                Log.w(TAG, "Camera selector $selector not available on this device", illegal)
+            }
+        }
+
+        if (!bound) {
+            Log.e(TAG, "Failed to bind any camera use cases")
             resultText.text = getString(R.string.status_no_face)
         }
     }
