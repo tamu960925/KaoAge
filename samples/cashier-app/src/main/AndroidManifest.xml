@@ -4,7 +4,8 @@
     <application
         android:allowBackup="false"
         android:label="KaoAge Cashier"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.KaoAgeCashier">
         <activity
             android:name="com.kaoage.cashier.MainActivity"
             android:exported="true">
