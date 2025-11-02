@@ -15,4 +15,5 @@
     <string name="action_reset_bestshot">Reset BestShot</string>
     <string name="permission_camera_rationale">Camera access is required to evaluate faces on-device.</string>
     <string name="status_model_missing">Model not found. Run `scripts/download_models.sh` before launching the app.</string>
+    <string name="status_age_model_missing">Age regression model missing. Run `scripts/convert_age_model.py` to generate age_regression.tflite.</string>
 </resources>

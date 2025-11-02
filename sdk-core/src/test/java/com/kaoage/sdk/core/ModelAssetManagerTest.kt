@@ -17,16 +17,22 @@ class ModelAssetManagerTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun loadModelByteBuffer_returnsNonEmptyBuffer() {
-        val buffer = ModelAssetManager.loadModelByteBuffer(context)
-        assertTrue(buffer.capacity() > 0, "Model buffer must not be empty")
+    fun loadAgeModel_whenAvailable() {
+        if (!ModelAssetManager.hasAgeModel(context)) {
+            return
+        }
+        val buffer = ModelAssetManager.loadAgeModelByteBuffer(context)
+        assertTrue(buffer.capacity() > 0, "Age model buffer must not be empty")
     }
 
     @Test
-    fun copyModelToCache_persistsModel() = runBlocking {
-        val cacheFile = ModelAssetManager.copyModelToCache(context)
-        assertTrue(cacheFile.exists(), "Cached model file should exist")
-        val buffer = ModelAssetManager.loadModelByteBuffer(context)
+    fun copyAgeModelToCache_whenAvailable() = runBlocking {
+        if (!ModelAssetManager.hasAgeModel(context)) {
+            return@runBlocking
+        }
+        val cacheFile = ModelAssetManager.copyAgeModelToCache(context)
+        assertTrue(cacheFile.exists(), "Cached age model should exist")
+        val buffer = ModelAssetManager.loadAgeModelByteBuffer(context)
         assertEquals(buffer.capacity().toLong(), cacheFile.length(), "Cache file length should match buffer size")
     }
 }

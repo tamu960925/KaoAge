@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import android.view.View
+import android.text.method.ScrollingMovementMethod
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -62,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private var cameraProvider: ProcessCameraProvider? = null
     private var lastBestShotResult: FaceInsightsResult? = null
     private var awaitingBestShotOverlay: Boolean = false
+    private var ageModelAvailable: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,7 +79,7 @@ class MainActivity : AppCompatActivity() {
         resetButton = findViewById(R.id.resetBestShot)
         jsonOverlayContainer = findViewById(R.id.jsonOverlayContainer)
         jsonOverlayText = findViewById(R.id.jsonOverlayText)
-        jsonOverlayText.movementMethod = android.text.method.ScrollingMovementMethod()
+        jsonOverlayText.movementMethod = ScrollingMovementMethod()
         jsonOverlayContainer.setOnClickListener {
             jsonOverlayContainer.visibility = View.GONE
             awaitingBestShotOverlay = false
@@ -98,10 +100,22 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                ModelAssetManager.copyModelToCache(applicationContext)
-                Log.d(TAG, "MobileNet model ready for inference")
+                if (ModelAssetManager.hasAgeModel(applicationContext)) {
+                    ModelAssetManager.copyAgeModelToCache(applicationContext)
+                    Log.d(TAG, "Age regression model ready for inference")
+                    ageModelAvailable = true
+                } else {
+                    Log.w(TAG, "Age regression TFLite missing. Run scripts/convert_age_model.py")
+                    ageModelAvailable = false
+                    withContext(Dispatchers.Main) {
+                        classifierText.text = getString(R.string.status_classifier_unknown)
+                        insightsText.text = getString(R.string.status_age_model_missing)
+                        jsonOverlayContainer.visibility = View.GONE
+                    }
+                }
             } catch (ioe: IOException) {
                 Log.e(TAG, "Model provisioning failed", ioe)
+                ageModelAvailable = false
                 withContext(Dispatchers.Main) {
                     resultText.text = getString(R.string.status_model_missing)
                     resetButton.visibility = View.GONE
@@ -281,11 +295,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (displayResult == null) {
-            insightsText.text = getString(R.string.status_bestshot_waiting)
+            if (ageModelAvailable) {
+                insightsText.text = getString(R.string.status_bestshot_waiting)
+            }
             classifierText.text = ""
             landmarkText.text = ""
             if (!awaitingBestShotOverlay) {
-            jsonOverlayContainer.visibility = View.GONE
+                jsonOverlayContainer.visibility = View.GONE
             }
         } else {
             val estimatedAge = displayResult.estimatedAgeYears ?: AgeHeuristics.estimationFor(displayResult.ageBracket)

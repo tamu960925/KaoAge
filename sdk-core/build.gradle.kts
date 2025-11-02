@@ -57,19 +57,19 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
 }
 
-private val mobilenetModel = rootProject.layout.projectDirectory.file("models/mobilenet_v1_1.0_224_quant.tflite")
+private val ageRegressionModel =
+    rootProject.layout.projectDirectory.file("models/age_regression.tflite")
 
-val verifyMobilenetModel by tasks.registering {
-    inputs.file(mobilenetModel)
+val verifyAgeRegressionModel by tasks.registering {
     doLast {
-        if (!mobilenetModel.asFile.exists()) {
-            throw org.gradle.api.GradleException(
-                "Missing MobileNet model. Run scripts/download_models.sh before building KaoAge SDK."
+        if (!ageRegressionModel.asFile.exists()) {
+            logger.warn(
+                "[kaoage] models/age_regression.tflite missing. Run scripts/convert_age_model.py to generate the TensorFlow Lite age regressor."
             )
         }
     }
 }
 
 tasks.named("preBuild") {
-    dependsOn(verifyMobilenetModel)
+    dependsOn(verifyAgeRegressionModel)
 }

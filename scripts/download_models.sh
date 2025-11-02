@@ -23,34 +23,36 @@ trap cleanup EXIT
 
 mkdir -p "$MODELS_DIR"
 
-MODEL_NAME="mobilenet_v1_1.0_224_quant"
-MODEL_FILENAME="${MODEL_NAME}.tflite"
-MODEL_TARGET="$MODELS_DIR/$MODEL_FILENAME"
-MODEL_URL="https://raw.githubusercontent.com/google-coral/test_data/master/${MODEL_FILENAME}"
-# SHA-256 checksum verified against Google Coral test_data repository (Apache-2.0)
-EXPECTED_SHA256="2d0ebfa2e75ae93c709e9ecc27570c9c0e49b7780733a840f82589fc1272fc3d"
+AGE_MODEL_URL="https://huggingface.co/Sharris/age_detection_regression/resolve/main/best_model.h5"
+AGE_MODEL_FILENAME="age_regression_source.h5"
+AGE_MODEL_TARGET="$MODELS_DIR/$AGE_MODEL_FILENAME"
+AGE_EXPECTED_SHA256="1837be0488aebe6199bd17d0e27f5222b28b5a79d3af8cdeebdb9e9f6c631557"
 
-if [[ -f "$MODEL_TARGET" ]]; then
-  echo "[kaoage] $MODEL_FILENAME already exists. Verifying checksum…" >&2
-  EXISTING_SHA256="$(checksum "$MODEL_TARGET")"
-  if [[ "$EXISTING_SHA256" == "$EXPECTED_SHA256" ]]; then
-    echo "[kaoage] Existing model is up to date." >&2
-    exit 0
-  fi
-  echo "[kaoage] Existing model checksum mismatch. Re-downloading…" >&2
-fi
+echo "[kaoage] Downloading age regression source model (best_model.h5)…" >&2
+curl --fail --location --output "$TMP_DIR/$AGE_MODEL_FILENAME" "$AGE_MODEL_URL"
 
-echo "[kaoage] Downloading $MODEL_FILENAME from Google Coral test data repository…" >&2
-curl --fail --location --output "$TMP_DIR/$MODEL_FILENAME" "$MODEL_URL"
-
-DOWNLOADED_SHA256="$(checksum "$TMP_DIR/$MODEL_FILENAME")"
-if [[ "$DOWNLOADED_SHA256" != "$EXPECTED_SHA256" ]]; then
-  echo "[kaoage] ERROR: Checksum mismatch for $MODEL_FILENAME" >&2
-  echo "Expected: $EXPECTED_SHA256" >&2
-  echo "Actual:   $DOWNLOADED_SHA256" >&2
+SOURCE_SHA256="$(checksum "$TMP_DIR/$AGE_MODEL_FILENAME")"
+if [[ "$SOURCE_SHA256" != "$AGE_EXPECTED_SHA256" ]]; then
+  echo "[kaoage] ERROR: Checksum mismatch for $AGE_MODEL_FILENAME" >&2
+  echo "Expected: $AGE_EXPECTED_SHA256" >&2
+  echo "Actual:   $SOURCE_SHA256" >&2
   exit 1
 fi
 
-mv "$TMP_DIR/$MODEL_FILENAME" "$MODEL_TARGET"
-echo "[kaoage] Model stored at $MODEL_TARGET" >&2
-echo "[kaoage] Remember to record the artifact in docs/compliance/dependency-register.md" >&2
+mv "$TMP_DIR/$AGE_MODEL_FILENAME" "$AGE_MODEL_TARGET"
+echo "[kaoage] Age regression source stored at $AGE_MODEL_TARGET" >&2
+
+AGE_TFLITE_TARGET="$MODELS_DIR/age_regression.tflite"
+if [[ ! -f "$AGE_TFLITE_TARGET" ]]; then
+  cat <<'EOM' >&2
+[kaoage] age_regression.tflite is missing.
+[kaoage] Run the converter with TensorFlow installed:
+
+  python scripts/convert_age_model.py --input models/age_regression_source.h5 --output models/age_regression.tflite
+
+EOM
+else
+  echo "[kaoage] Detected existing age_regression.tflite" >&2
+fi
+
+echo "[kaoage] Update docs/compliance/dependency-register.md with any new checksum information." >&2

@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 
 class FaceInsightsAnalyzer internal constructor(
     private val detector: FaceDetector,
-    private val mobilenetEstimator: MobileNetAgeGenderEstimator,
+    private val ageEstimator: AgeRegressionEstimator,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : AutoCloseable {
 
@@ -30,7 +30,7 @@ class FaceInsightsAnalyzer internal constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.Default
     ) : this(
         FaceDetection.getClient(config),
-        MobileNetAgeGenderEstimator(context.applicationContext),
+        AgeRegressionEstimator(context.applicationContext),
         dispatcher
     )
 
@@ -74,31 +74,26 @@ class FaceInsightsAnalyzer internal constructor(
             imageHeight = image.height
         )
 
-        val mobilenetInference = imageProxy?.let {
-            mobilenetEstimator.infer(
+        val ageInference = imageProxy?.let {
+            ageEstimator.infer(
                 imageProxy = it,
                 boundingBox = boundingBox,
                 rotationDegrees = image.rotationDegrees
             )
         }
 
-        mobilenetInference?.topProbability?.let { probability ->
-            faceConfidence = max(faceConfidence, probability)
-        }
-
-        val (ageBracket, ageConfidence) = AgeGenderHeuristics.estimateAge(sizeRatio, mobilenetInference)
+        val (ageBracket, ageConfidence) = AgeGenderHeuristics.estimateAge(sizeRatio, ageInference)
         val (gender, genderConfidence) = AgeGenderHeuristics.estimateGender(
             primary.leftEyeOpenProbability,
             primary.rightEyeOpenProbability,
-            primary.smilingProbability,
-            mobilenetInference
+            primary.smilingProbability
         )
 
         val bestShotEvaluation = BestShotHeuristics.evaluate(
             faceConfidence,
             eulerAngles,
             sessionConfig,
-            mobilenetInference
+            ageInference
         )
 
         FaceInsightsResult(
@@ -114,16 +109,16 @@ class FaceInsightsAnalyzer internal constructor(
             genderConfidence = genderConfidence,
             bestShotEligible = bestShotEvaluation.eligible,
             bestShotReasons = bestShotEvaluation.reasons,
-            classifierLabel = mobilenetInference?.topLabel,
-            classifierConfidence = mobilenetInference?.topProbability,
+            classifierLabel = null,
+            classifierConfidence = null,
             landmarkPresence = LandmarkPresence.fromLandmarks(landmarks),
-            estimatedAgeYears = mobilenetInference?.estimatedAgeYears
+            estimatedAgeYears = ageInference?.ageYears
         )
     }
 
     override fun close() {
         detector.close()
-        mobilenetEstimator.close()
+        ageEstimator.close()
     }
 
     private fun area(rect: Rect): Float =
@@ -171,11 +166,16 @@ private object NamedLandmarkFactory {
 private object AgeGenderHeuristics {
     fun estimateAge(
         sizeRatio: Float,
-        inference: MobileNetAgeGenderEstimator.Inference?
+        inference: AgeRegressionEstimator.Inference?
     ): Pair<AgeBracket, Float> {
-        inference?.ageBracket?.let { age ->
-            val confidence = inference.ageConfidence?.coerceIn(0f, 1f) ?: 0.8f
-            return age to confidence
+        inference?.ageYears?.takeIf { it.isFinite() }?.let { years ->
+            val bracket = when {
+                years < 13f -> AgeBracket.CHILD
+                years < 20f -> AgeBracket.TEEN
+                years < 55f -> AgeBracket.ADULT
+                else -> AgeBracket.SENIOR
+            }
+            return bracket to 0.95f
         }
         return when {
             sizeRatio < 0.12f -> AgeBracket.CHILD to confidence(sizeRatio, 0.12f)
@@ -188,13 +188,8 @@ private object AgeGenderHeuristics {
     fun estimateGender(
         leftEyeOpen: Float?,
         rightEyeOpen: Float?,
-        smilingProbability: Float?,
-        inference: MobileNetAgeGenderEstimator.Inference?
+        smilingProbability: Float?
     ): Pair<Gender, Float> {
-        inference?.gender?.let { gender ->
-            val confidence = inference.genderConfidence?.coerceIn(0f, 1f) ?: 0.8f
-            return gender to confidence
-        }
         val baseline = smilingProbability ?: 0.5f
         val eyeScore = listOfNotNull(leftEyeOpen, rightEyeOpen).averageOrNull() ?: 0.5f
         val combined = ((baseline + eyeScore) / 2f).coerceIn(0f, 1f)
@@ -227,7 +222,7 @@ private object BestShotHeuristics {
         faceConfidence: Float,
         eulerAngles: EulerAngles,
         sessionConfig: SessionConfig,
-        inference: MobileNetAgeGenderEstimator.Inference?
+        inference: AgeRegressionEstimator.Inference?
     ): Result {
         val reasons = linkedSetOf<BestShotReason>()
         if (abs(eulerAngles.yaw) < 12f && abs(eulerAngles.pitch) < 10f) {
@@ -236,8 +231,10 @@ private object BestShotHeuristics {
         if (faceConfidence >= sessionConfig.minFaceConfidence + 0.1f) {
             reasons += BestShotReason.CONFIDENCE_PEAK
         }
-        if ((inference?.topProbability ?: 0f) >= 0.75f) {
-            reasons += BestShotReason.CONFIDENCE_PEAK
+        inference?.ageYears?.takeIf { it.isFinite() }?.let {
+            if (it in 10f..90f) {
+                reasons += BestShotReason.CONFIDENCE_PEAK
+            }
         }
 
         val eligible = sessionConfig.enableBestShot && reasons.isNotEmpty()

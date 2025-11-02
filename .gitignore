@@ -26,3 +26,4 @@ tmp/
 
 # Model artifacts (downloaded via scripts/download_models.sh)
 models/
+.venv/
