@@ -17,7 +17,6 @@ import com.kaoage.sdk.core.model.LandmarkType
 import com.kaoage.sdk.core.model.NormalizedPoint
 import kotlinx.coroutines.tasks.await
 import kotlin.math.max
-import kotlin.math.min
 
 /** Simple frame abstraction to decouple session logic from CameraX specifics. */
 data class FrameInput(
@@ -63,7 +62,7 @@ class MlKitFaceAnalyzer : FaceDetector {
         val imageHeight = mediaImage.height
         return faces.mapIndexed { index, face ->
             val id = face.trackingId?.toString() ?: "frame-${frame.timestampMillis}-$index"
-            val confidence = detectionConfidence(face, imageWidth, imageHeight)
+            val confidence = detectionConfidence(face, imageWidth, imageHeight, config)
             DetectionResult(
                 detectionId = id,
                 timestampMillis = frame.timestampMillis,
@@ -117,14 +116,19 @@ class MlKitFaceAnalyzer : FaceDetector {
     private fun detectionConfidence(
         face: com.google.mlkit.vision.face.Face,
         imageWidth: Int,
-        imageHeight: Int
+        imageHeight: Int,
+        config: DetectionSessionConfig
     ): Float {
         val faceWidth = max(face.boundingBox.width(), 1)
         val faceHeight = max(face.boundingBox.height(), 1)
         val faceArea = faceWidth * faceHeight
         val imageArea = max(imageWidth * imageHeight, 1)
         val areaRatio = faceArea.toFloat() / imageArea.toFloat()
-        val trackingBonus = if (face.trackingId != null) 0.1f else 0f
-        return (areaRatio + trackingBonus).coerceIn(0.05f, 1f)
+        val hasTrackingId = face.trackingId != null
+        return DetectionConfidenceHeuristic.score(
+            areaRatio = areaRatio,
+            hasTrackingId = hasTrackingId,
+            minFaceSizeRatio = config.minFaceSizeRatio
+        )
     }
 }
