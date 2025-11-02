@@ -10,3 +10,16 @@
 *.env
 .env.*
 *.pem
+
+# Android/Kotlin build artifacts
+.gradle/
+.gradle-user/
+**/build/
+**/out/
+local.properties
+*.iml
+.idea/
+*.class
+*.jar
+*.log
+tmp/

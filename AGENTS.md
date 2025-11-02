@@ -13,3 +13,10 @@
 
 ## Deliverables
 - `/sdk-core`, `/sdk-bestshot`, `/samples/cashier-app`, `/docs`.
+
+## Active Technologies
+- Kotlin 1.9.24 with Android Gradle Plugin 8.6.0 targeting Android API 29+ + ML Kit Face Detection on-device API; kotlinx-serialization JSON for `toJson()`; AndroidX lifecycle & coroutines for frame pipeline coordination (001-add-face-insights)
+- None — results remain in memory; confirm no caching layers added (001-add-face-insights)
+
+## Recent Changes
+- 001-add-face-insights: Added Kotlin 1.9.24 with Android Gradle Plugin 8.6.0 targeting Android API 29+ + ML Kit Face Detection on-device API; kotlinx-serialization JSON for `toJson()`; AndroidX lifecycle & coroutines for frame pipeline coordination

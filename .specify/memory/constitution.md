@@ -1,93 +1,65 @@
 <!--
 Sync Impact Report
-Version change: 0.0.0 → 1.0.0
-Modified principles:
-- (new) → Kotlin-First SDK with Java Interop
-- (new) → Face Intelligence Boundaries
-- (new) → On-Device Privacy Guarantees
-- (new) → Test-Driven Development Discipline
-- (new) → Model Stewardship & Dependency Safety
-Added sections:
-- Technical Guardrails
-- Delivery Workflow
-Removed sections:
-- None
+Version change: N/A → 1.0.0
+Modified principles: Initial adoption
+Added sections: Entire constitution
+Removed sections: None
 Templates requiring updates:
-- ✅ .specify/templates/plan-template.md
-- ✅ .specify/templates/tasks-template.md
-Follow-up TODOs:
-- None
+- ✅ .specify/templates/plan-template.md (age/gender guardrail added)
+- ✅ .specify/templates/spec-template.md (reviewed; no changes needed)
+- ✅ .specify/templates/tasks-template.md (path conventions updated)
+- ⚠ .specify/templates/commands/ (no command templates present; confirm if future commands needed)
+Follow-up TODOs: None
 -->
-
 # KaoAge Constitution
 
-## Core Principles
+## Metadata
+- **Constitution Version**: 1.0.0
+- **Ratification Date**: 2025-11-02
+- **Last Amended Date**: 2025-11-02
+- **Project Scope**: Android on-device face landmark detection and age/gender estimation SDK comprising `sdk-core`, `sdk-bestshot`, `samples/cashier-app`, and `docs`.
 
-### Kotlin-First SDK with Java Interop
-All KaoAge SDK modules MUST be authored in Kotlin. Any public API intended for Java
-callers MUST expose `@JvmStatic`, `@JvmOverloads`, or builder/callback patterns so
-Java apps can integrate without shims. Mixing additional JVM languages requires a
-governance waiver. This keeps the codebase cohesive while honoring downstream
-Android teams that rely on Java entry points.
+## Mission
+KaoAge delivers an on-device Android 10+ SDK that detects facial landmarks and predicts age and gender while the host app retains camera ownership. The SDK returns analysis artifacts and BestShot guidance through Kotlin-first, Java-friendly APIs without persisting or transmitting images.
 
-### Face Intelligence Boundaries
-Face analytics MUST use on-device ML Kit Face Detection. The SDK MUST output the
-detected face box, Euler angles (yaw, pitch, roll), and landmarks for eyes, nose,
-and mouth, plus the BestShot signal stream. Alternative detectors or cloud calls
-are prohibited. Centralizing on ML Kit ensures consistent accuracy, licensing, and
-support from Google’s maintained models.
+## Principles
 
-### On-Device Privacy Guarantees
-The SDK MUST never persist raw images, frames, or derived templates. All inference
-occurs on-device, and camera ownership stays in the host application. KaoAge SDKs
-may only return analysis payloads and BestShot instructions. These boundaries keep
-consumer privacy intact and prevent data egress risks.
+### Principle 1: On-Device Privacy & Host Control
+- The SDK MUST run all face analysis on-device with zero network calls and MUST NOT persist raw frames or intermediate tensors.
+- The host application MUST own camera lifecycle and only pass frames to the SDK; SDK code MUST NOT open or manage camera sessions.
+- SDK outputs MUST be limited to in-memory analysis artifacts (landmarks, bounding boxes, Euler angles, age/gender estimates, BestShot signals) and cleared after delivery.
+**Rationale**: Protects user privacy, respects app boundaries, and ensures compliance with on-device mandates.
 
-### Test-Driven Development Discipline
-Every change begins with failing tests (JUnit/Robolectric). Developers MUST follow
-Red-Green-Refactor: write tests, observe them fail, implement, then refactor with
-tests passing. No production code merges without automated test coverage for the
-behavior. This discipline preserves regression safety in a camera-facing SDK.
+### Principle 2: Contract-First Kotlin APIs with Java Interop
+- Production modules MUST be authored in Kotlin and expose Java-friendly builders, callbacks, and interop annotations (`@JvmStatic`, `@JvmOverloads`) for Android 10+ compatibility.
+- All public result models MUST implement `Parcelable`, provide a deterministic `toJson()`, and include bounding box, Euler angles, required landmarks (eyes, nose, mouth), and prediction metadata.
+- SDK layers MUST remain headless: camera control, UI, and threading policies stay in the host app; SDK only publishes analysis results and BestShot signals.
+**Rationale**: Guarantees consistent integration across Kotlin and Java apps while keeping the SDK scoped to analysis responsibilities.
 
-### Model Stewardship & Dependency Safety
-Models remain external assets fetched via `scripts/download_models.sh` and loaded
-by File, ByteBuffer, or AssetFileDescriptor. New dependencies require documented
-tests and a license audit before adoption. Gradle, ML, and native artifacts MUST be
-version-pinned to guarantee reproducible builds and compliance.
+### Principle 3: Canonical ML Execution
+- Face landmark detection MUST use ML Kit Face Detection with repository-approved configuration; alternative detectors or cloud services require governance approval.
+- Age and gender estimation MUST rely on sanctioned on-device models fetched via `scripts/download_models.sh` and loaded through File, ByteBuffer, or AssetFileDescriptor paths with checksums.
+- Pre/post-processing pipelines, score thresholds, and model versions MUST be documented in `docs/` and versioned alongside SDK releases.
+**Rationale**: Maintains deterministic ML behavior, auditability, and reproducibility across environments.
 
-## Technical Guardrails
-
-- Deliverables MUST live in `sdk-core`, `sdk-bestshot`, `samples/cashier-app`, and
-  `docs`, with Gradle modules mirroring that structure.
-- The host app retains camera session control; the SDK only consumes provided
-  frames and returns analysis/best-shot guidance.
-- Parcelables MUST back every outward-facing data model and provide `toJson()` for
-  logging or transport. No binary serialization alternatives are allowed.
-- ML Kit models and configuration MUST be bundled or downloaded via the managed
-  script; runtime downloads need explicit UX handling in the host app.
-
-## Delivery Workflow
-
-- Plans and specs MUST document Kotlin targeting Android 10+ and spell out ML Kit
-  integration, camera handoff, and parcelable contracts.
-- Tasks MUST schedule test authoring ahead of implementation, enumerating the
-  failing unit/integration tests required for each story.
-- Dependency additions or upgrades MUST include a LICENSE check entry and test
-  coverage plan before implementation begins.
-- Sample app updates MUST demonstrate the BestShot flow, parcelable models, and
-  on-device execution path.
+### Principle 4: Test-Driven Quality & Dependency Governance
+- Every change MUST begin with failing JUnit or Robolectric tests covering the desired behavior before production code changes land.
+- New dependencies or ML models MUST ship with documented license review, reproducible tests, and recorded justification in `docs/compliance/`.
+- CI pipelines MUST enforce failing-first evidence and block merges until tests validating principles pass on-device or Robolectric environments.
+**Rationale**: Preserves reliability, legal compliance, and a verifiable TDD workflow.
 
 ## Governance
 
-- This constitution governs all KaoAge SDK repositories, samples, and docs. Any
-  conflicting practice documents are superseded.
-- Amendments require agreement by the SDK lead engineer and product owner, a
-  documented migration plan, updated templates, and a semantic version bump.
-- Versioning follows SemVer: MAJOR for breaking policy changes, MINOR for new
-  principles or material expansions, PATCH for clarifications.
-- Every PR review MUST confirm Kotlin-only source, ML Kit usage, on-device privacy,
-  TDD evidence (failing tests first), and dependency/license compliance.
-- Compliance reviews occur quarterly; findings and remediation owners are recorded
-  in `docs/governance.md`.
+### Amendment Procedure
+- Proposed amendments MUST be authored as RFCs in `docs/governance/` referencing impacted principles and rationale.
+- Core maintainers review RFCs within five business days; adoption requires unanimous approval or, failing unanimity, a majority vote with documented dissent resolution.
+- Upon approval, update this constitution, regenerate the Sync Impact Report, and propagate changes to plan/spec/task templates before merging.
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-01 | **Last Amended**: 2025-11-01
+### Versioning Policy
+- Semantic versioning applies: MAJOR for principle removals or incompatible shifts, MINOR for new principles or expanded scope, PATCH for clarifications.
+- `RATIFICATION_DATE` reflects the original adoption; `LAST_AMENDED_DATE` updates with each merged amendment.
+
+### Compliance Reviews
+- Feature kickoffs MUST pass the Constitution Check gate in `.specify/templates/plan-template.md` before implementation.
+- Quarterly audits evaluate SDK modules, sample apps, and scripts for adherence; log findings and remediation tasks in `docs/compliance/`.
+- Any violation triggers corrective tasks in `/specs/.../tasks.md` with accountable owners and deadlines tracked to closure.
