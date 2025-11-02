@@ -1,0 +1,282 @@
+openapi: 3.0.3
+info:
+  title: Face Insights SDK Host Contract
+  version: 0.1.0
+  description: >
+    Contract illustrating how host applications interact with the Face Insights SDK.
+    Camera control remains in the host; only metadata and analysis artifacts traverse this contract.
+servers:
+  - url: https://localhost/sdk
+    description: Local in-app bridge (non-networked)
+paths:
+  /sessions:
+    post:
+      summary: Initialize a detection session with runtime thresholds.
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionConfig'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDescriptor'
+  /sessions/{sessionId}/analysis:
+    post:
+      summary: Analyze a frame already captured by the host app.
+      operationId: analyzeFrame
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FrameSubmission'
+      responses:
+        '200':
+          description: Analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaceInsightsResult'
+        '202':
+          description: Analysis accepted but still processing
+        '422':
+          description: Frame rejected due to configuration or quality issues
+  /sessions/{sessionId}/bestshot:
+    get:
+      summary: Retrieve the next BestShot recommendation for a session.
+      operationId: getBestShot
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: BestShot signal available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BestShotSignal'
+        '204':
+          description: No qualifying frames since last query
+components:
+  schemas:
+    SessionConfig:
+      type: object
+      required:
+        - minFaceConfidence
+        - minAgeConfidence
+        - minGenderConfidence
+        - minFaceSizeRatio
+        - maxFrameLatencyMillis
+      properties:
+        minFaceConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.7
+        minAgeConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.6
+        minGenderConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.6
+        minFaceSizeRatio:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.15
+        maxFrameLatencyMillis:
+          type: integer
+          minimum: 0
+          default: 500
+        enableBestShot:
+          type: boolean
+          default: true
+        cooldownMillis:
+          type: integer
+          minimum: 0
+          default: 2500
+    SessionDescriptor:
+      type: object
+      required:
+        - sessionId
+        - expiresAt
+      properties:
+        sessionId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    FrameSubmission:
+      type: object
+      required:
+        - frameId
+        - timestampMillis
+        - frameReference
+      properties:
+        frameId:
+          type: string
+        timestampMillis:
+          type: integer
+          format: int64
+        frameReference:
+          type: string
+          description: Identifier of the in-memory frame buffer owned by the host app.
+        metadata:
+          type: object
+          description: Optional host-provided hints (lighting, retry count, mask presence).
+    FaceInsightsResult:
+      type: object
+      required:
+        - detectionId
+        - frameTimestampMillis
+        - boundingBox
+        - eulerAngles
+        - landmarks
+        - faceConfidence
+        - ageBracket
+        - ageConfidence
+        - gender
+        - genderConfidence
+      properties:
+        detectionId:
+          type: string
+        frameTimestampMillis:
+          type: integer
+          format: int64
+        boundingBox:
+          $ref: '#/components/schemas/BoundingBox'
+        eulerAngles:
+          $ref: '#/components/schemas/EulerAngles'
+        landmarks:
+          $ref: '#/components/schemas/LandmarkSet'
+        faceConfidence:
+          type: number
+          format: float
+        ageBracket:
+          type: string
+          enum: [CHILD, TEEN, ADULT, SENIOR]
+        ageConfidence:
+          type: number
+          format: float
+        gender:
+          type: string
+          enum: [FEMALE, MALE, UNDETERMINED]
+        genderConfidence:
+          type: number
+          format: float
+        bestShotEligible:
+          type: boolean
+        bestShotReasons:
+          type: array
+          items:
+            type: string
+            enum: [FACE_STABLE, CONFIDENCE_PEAK, MULTI_FACE_BLOCK, LOW_LIGHT]
+    BestShotSignal:
+      type: object
+      required:
+        - detectionId
+        - frameTimestampMillis
+        - qualityScore
+        - trigger
+      properties:
+        detectionId:
+          type: string
+        frameTimestampMillis:
+          type: integer
+          format: int64
+        qualityScore:
+          type: number
+          format: float
+        trigger:
+          type: string
+          enum: [FACE_STABLE, MAX_CONFIDENCE, TIMEOUT_RECOVERY]
+        cooldownMillis:
+          type: integer
+          minimum: 0
+    BoundingBox:
+      type: object
+      required:
+        - left
+        - top
+        - right
+        - bottom
+        - imageWidth
+        - imageHeight
+      properties:
+        left:
+          type: number
+          format: float
+        top:
+          type: number
+          format: float
+        right:
+          type: number
+          format: float
+        bottom:
+          type: number
+          format: float
+        imageWidth:
+          type: integer
+        imageHeight:
+          type: integer
+    EulerAngles:
+      type: object
+      required:
+        - yaw
+        - pitch
+        - roll
+      properties:
+        yaw:
+          type: number
+          format: float
+        pitch:
+          type: number
+          format: float
+        roll:
+          type: number
+          format: float
+    LandmarkSet:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/NormalizedPoint'
+      description: Map of landmark type to normalized point (keys like LEFT_EYE, RIGHT_EYE, NOSE_TIP).
+    NormalizedPoint:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: number
+          format: float
+        y:
+          type: number
+          format: float
+        probability:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
