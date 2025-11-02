@@ -73,11 +73,28 @@ data class LandmarkPresence(
     val mouth: Boolean
 ) : Parcelable {
     companion object {
+        private const val MIN_CONFIDENCE = 0.5f
+
+        private fun probabilityFor(
+            landmarks: List<NamedLandmark>,
+            type: LandmarkType
+        ): Float? = landmarks
+            .firstOrNull { it.type == type }
+            ?.point
+            ?.probability
+            ?.takeIf { it in 0f..1f }
+
         fun fromLandmarks(landmarks: List<NamedLandmark>): LandmarkPresence =
             LandmarkPresence(
-                eyes = landmarks.any { it.type == LandmarkType.LEFT_EYE || it.type == LandmarkType.RIGHT_EYE },
-                nose = landmarks.any { it.type == LandmarkType.NOSE_TIP },
-                mouth = landmarks.any { it.type == LandmarkType.MOUTH_LEFT || it.type == LandmarkType.MOUTH_RIGHT }
+                eyes = listOf(
+                    probabilityFor(landmarks, LandmarkType.LEFT_EYE),
+                    probabilityFor(landmarks, LandmarkType.RIGHT_EYE)
+                ).all { (it ?: 0f) >= MIN_CONFIDENCE },
+                nose = probabilityFor(landmarks, LandmarkType.NOSE_TIP)?.let { it >= MIN_CONFIDENCE } ?: false,
+                mouth = listOf(
+                    probabilityFor(landmarks, LandmarkType.MOUTH_LEFT),
+                    probabilityFor(landmarks, LandmarkType.MOUTH_RIGHT)
+                ).all { (it ?: 0f) >= MIN_CONFIDENCE }
             )
     }
 }

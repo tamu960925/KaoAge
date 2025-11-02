@@ -75,7 +75,7 @@ class MlKitFaceAnalyzer : FaceDetector {
                     imageHeight = imageHeight
                 ),
                 eulerAngles = EulerAngles(face.headEulerAngleY, face.headEulerAngleX, face.headEulerAngleZ),
-                landmarks = LandmarkSet(landmarksFrom(face)),
+                landmarks = LandmarkSet(landmarksFrom(face, imageWidth, imageHeight)),
                 confidence = confidence
             )
         }
@@ -94,7 +94,11 @@ class MlKitFaceAnalyzer : FaceDetector {
             .enableTracking()
             .build()
 
-    private fun landmarksFrom(face: com.google.mlkit.vision.face.Face): Map<LandmarkType, NormalizedPoint> {
+    private fun landmarksFrom(
+        face: com.google.mlkit.vision.face.Face,
+        imageWidth: Int,
+        imageHeight: Int
+    ): Map<LandmarkType, NormalizedPoint> {
         val required = LandmarkType.values()
         return required.associateWith { type ->
             val landmark = when (type) {
@@ -105,10 +109,13 @@ class MlKitFaceAnalyzer : FaceDetector {
                 LandmarkType.MOUTH_RIGHT -> face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.MOUTH_RIGHT)
             }
             val position = landmark?.position
+            val probability = landmark?.inFrameLikelihood
+                ?.takeIf { it.isFinite() && it >= 0f }
+                ?.coerceAtMost(1f)
             NormalizedPoint(
-                x = (position?.x ?: 0f) / face.boundingBox.width().coerceAtLeast(1),
-                y = (position?.y ?: 0f) / face.boundingBox.height().coerceAtLeast(1),
-                probability = null
+                x = ((position?.x ?: 0f) / imageWidth.toFloat()).coerceIn(0f, 1f),
+                y = ((position?.y ?: 0f) / imageHeight.toFloat()).coerceIn(0f, 1f),
+                probability = probability
             )
         }
     }
