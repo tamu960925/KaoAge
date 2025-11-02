@@ -16,12 +16,14 @@ import org.tensorflow.lite.Interpreter
 internal class AgeRegressionEstimator(private val context: Context) : Closeable {
 
     data class Inference(
-        val ageYears: Float
+        val ageYears: Float,
+        val genderScores: FloatArray? = null
     )
 
     private val ageModelAvailable: Boolean = ModelAssetManager.hasAgeModel(context)
+    private val genderModelAvailable: Boolean = ModelAssetManager.hasGenderModel(context)
 
-    private val interpreter: Interpreter? by lazy {
+    private val ageInterpreter: Interpreter? by lazy {
         if (!ageModelAvailable) return@lazy null
         Interpreter(
             ModelAssetManager.loadAgeModelByteBuffer(context),
@@ -31,17 +33,30 @@ internal class AgeRegressionEstimator(private val context: Context) : Closeable 
         )
     }
 
-    private val inputBuffer: ByteBuffer =
-        ByteBuffer.allocateDirect(INPUT_BYTE_SIZE).order(ByteOrder.nativeOrder())
-    private val outputBuffer: ByteBuffer =
-        ByteBuffer.allocateDirect(OUTPUT_BYTE_SIZE).order(ByteOrder.nativeOrder())
+    private val genderInterpreter: Interpreter? by lazy {
+        if (!genderModelAvailable) return@lazy null
+        Interpreter(
+            ModelAssetManager.loadGenderModelByteBuffer(context),
+            Interpreter.Options().apply {
+                setNumThreads(Runtime.getRuntime().availableProcessors().coerceAtMost(4))
+            }
+        )
+    }
+
+    private val ageInputBuffer: ByteBuffer =
+        ByteBuffer.allocateDirect(AGE_INPUT_BYTE_SIZE).order(ByteOrder.nativeOrder())
+    private val genderInputBuffer: ByteBuffer =
+        ByteBuffer.allocateDirect(GENDER_INPUT_BYTE_SIZE).order(ByteOrder.nativeOrder())
 
     fun infer(
         imageProxy: ImageProxy,
         boundingBox: BoundingBox,
         rotationDegrees: Int
     ): Inference? {
-        val interpreter = interpreter ?: return null
+        val hasAnyModel = ageModelAvailable || genderModelAvailable
+        if (!hasAnyModel) {
+            return null
+        }
 
         val bitmap = ImageProxyUtils.toBitmap(imageProxy)
         val rotated = rotateBitmap(bitmap, rotationDegrees)
@@ -68,44 +83,66 @@ internal class AgeRegressionEstimator(private val context: Context) : Closeable 
         )
         rotated.recycle()
 
-        val scaled = Bitmap.createScaledBitmap(faceBitmap, INPUT_SIZE, INPUT_SIZE, true)
-        if (scaled !== faceBitmap) {
-            faceBitmap.recycle()
-        }
+        val ageBitmap = Bitmap.createScaledBitmap(faceBitmap, AGE_INPUT_SIZE, AGE_INPUT_SIZE, true)
+        val genderBitmap = Bitmap.createScaledBitmap(faceBitmap, GENDER_INPUT_SIZE, GENDER_INPUT_SIZE, true)
 
         try {
-            prepareInputBuffer(scaled)
-            interpreter.run(inputBuffer, outputBuffer)
-            outputBuffer.rewind()
-            val age = outputBuffer.float
-            return Inference(ageYears = age)
+            val ageYears = runAgeModel(ageInterpreter, ageBitmap)
+            val genderScores = runGenderModel(genderInterpreter, genderBitmap)
+            if (ageYears == null && genderScores == null) {
+                return null
+            }
+            return Inference(
+                ageYears = ageYears ?: Float.NaN,
+                genderScores = genderScores
+            )
         } catch (t: Throwable) {
             return null
         } finally {
-            scaled.recycle()
-            inputBuffer.rewind()
-            outputBuffer.rewind()
+            if (ageBitmap !== faceBitmap) {
+                ageBitmap.recycle()
+            }
+            if (genderBitmap !== faceBitmap && genderBitmap !== ageBitmap) {
+                genderBitmap.recycle()
+            }
+            faceBitmap.recycle()
+            ageInputBuffer.rewind()
+            genderInputBuffer.rewind()
         }
     }
 
-    private fun prepareInputBuffer(bitmap: Bitmap) {
-        inputBuffer.rewind()
-        for (y in 0 until INPUT_SIZE) {
-            for (x in 0 until INPUT_SIZE) {
+    private fun prepareInputBuffer(bitmap: Bitmap, size: Int, buffer: ByteBuffer) {
+        buffer.rewind()
+        for (y in 0 until size) {
+            for (x in 0 until size) {
                 val pixel = bitmap.getPixel(x, y)
                 val r = ((pixel shr 16) and 0xFF)
                 val g = ((pixel shr 8) and 0xFF)
                 val b = (pixel and 0xFF)
 
-                inputBuffer.putFloat(normalizeChannel(r))
-                inputBuffer.putFloat(normalizeChannel(g))
-                inputBuffer.putFloat(normalizeChannel(b))
+                buffer.putFloat(r / 255f)
+                buffer.putFloat(g / 255f)
+                buffer.putFloat(b / 255f)
             }
         }
     }
 
-    private fun normalizeChannel(value: Int): Float =
-        (value / 127.5f) - 1f
+    private fun runAgeModel(interpreter: Interpreter?, bitmap: Bitmap): Float? {
+        if (interpreter == null) return null
+        prepareInputBuffer(bitmap, AGE_INPUT_SIZE, ageInputBuffer)
+        val output = Array(1) { FloatArray(1) }
+        interpreter.run(ageInputBuffer, output)
+        val normalized = output[0].getOrNull(0)?.coerceAtLeast(0f) ?: return null
+        return normalized * AGE_SCALE
+    }
+
+    private fun runGenderModel(interpreter: Interpreter?, bitmap: Bitmap): FloatArray? {
+        if (interpreter == null) return null
+        prepareInputBuffer(bitmap, GENDER_INPUT_SIZE, genderInputBuffer)
+        val output = Array(1) { FloatArray(2) }
+        interpreter.run(genderInputBuffer, output)
+        return output[0].copyOf()
+    }
 
     private fun rotateBitmap(bitmap: Bitmap, rotationDegrees: Int): Bitmap {
         if (rotationDegrees == 0) return bitmap
@@ -133,14 +170,17 @@ internal class AgeRegressionEstimator(private val context: Context) : Closeable 
     }
 
     override fun close() {
-        interpreter?.close()
+        ageInterpreter?.close()
+        genderInterpreter?.close()
     }
 
     companion object {
-        private const val INPUT_SIZE = 224
+        private const val AGE_INPUT_SIZE = 200
+        private const val GENDER_INPUT_SIZE = 128
         private const val CHANNELS = 3
         private const val FLOAT_BYTES = 4
-        private const val INPUT_BYTE_SIZE = INPUT_SIZE * INPUT_SIZE * CHANNELS * FLOAT_BYTES
-        private const val OUTPUT_BYTE_SIZE = FLOAT_BYTES
+        private const val AGE_INPUT_BYTE_SIZE = AGE_INPUT_SIZE * AGE_INPUT_SIZE * CHANNELS * FLOAT_BYTES
+        private const val GENDER_INPUT_BYTE_SIZE = GENDER_INPUT_SIZE * GENDER_INPUT_SIZE * CHANNELS * FLOAT_BYTES
+        private const val AGE_SCALE = 116f
     }
 }

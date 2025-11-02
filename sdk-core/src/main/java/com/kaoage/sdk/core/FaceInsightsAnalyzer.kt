@@ -86,7 +86,8 @@ class FaceInsightsAnalyzer internal constructor(
         val (gender, genderConfidence) = AgeGenderHeuristics.estimateGender(
             primary.leftEyeOpenProbability,
             primary.rightEyeOpenProbability,
-            primary.smilingProbability
+            primary.smilingProbability,
+            ageInference
         )
 
         val bestShotEvaluation = BestShotHeuristics.evaluate(
@@ -163,7 +164,7 @@ private object NamedLandmarkFactory {
     }
 }
 
-private object AgeGenderHeuristics {
+internal object AgeGenderHeuristics {
     fun estimateAge(
         sizeRatio: Float,
         inference: AgeRegressionEstimator.Inference?
@@ -188,8 +189,22 @@ private object AgeGenderHeuristics {
     fun estimateGender(
         leftEyeOpen: Float?,
         rightEyeOpen: Float?,
-        smilingProbability: Float?
+        smilingProbability: Float?,
+        inference: AgeRegressionEstimator.Inference?
     ): Pair<Gender, Float> {
+        val genderScores = inference?.genderScores
+        if (genderScores != null && genderScores.size >= 2) {
+            val male = genderScores[0].coerceIn(0f, 1f)
+            val female = genderScores[1].coerceIn(0f, 1f)
+            val delta = abs(male - female)
+            val mean = ((male + female) * 0.5f).coerceIn(0f, 1f)
+            return when {
+                delta < 0.08f -> Gender.UNDETERMINED to mean
+                female > male -> Gender.FEMALE to female
+                else -> Gender.MALE to male
+            }
+        }
+
         val baseline = smilingProbability ?: 0.5f
         val eyeScore = listOfNotNull(leftEyeOpen, rightEyeOpen).averageOrNull() ?: 0.5f
         val combined = ((baseline + eyeScore) / 2f).coerceIn(0f, 1f)
