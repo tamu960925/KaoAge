@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">KaoAge Cashier</string>
+    <string name="status_waiting">Point the camera at a face to see insights.</string>
+    <string name="status_no_face">No primary face detected.</string>
+    <string name="status_detection_template">Face %1$.0f%% • %2$s • %3$s</string>
+    <string name="status_bestshot_triggered">BestShot triggered (%1$s) • quality %2$.0f%%</string>
+    <string name="status_bestshot_pending">BestShot eligible • reasons %1$s</string>
+    <string name="action_reset_bestshot">Reset BestShot</string>
+    <string name="permission_camera_rationale">Camera access is required to evaluate faces on-device.</string>
+    <string name="status_model_missing">Model not found. Run `scripts/download_models.sh` before launching the app.</string>
+</resources>

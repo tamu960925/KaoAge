@@ -24,6 +24,8 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    sourceSets["main"].assets.srcDir(rootProject.layout.projectDirectory.dir("models"))
+
     packaging {
         resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
     }
@@ -52,4 +54,21 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("org.robolectric:robolectric:4.12.1")
     testImplementation("androidx.test:core:1.6.1")
+}
+
+private val mobilenetModel = rootProject.layout.projectDirectory.file("models/mobilenet_v1_1.0_224_quant.tflite")
+
+val verifyMobilenetModel by tasks.registering {
+    inputs.file(mobilenetModel)
+    doLast {
+        if (!mobilenetModel.asFile.exists()) {
+            throw org.gradle.api.GradleException(
+                "Missing MobileNet model. Run scripts/download_models.sh before building KaoAge SDK."
+            )
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(verifyMobilenetModel)
 }
