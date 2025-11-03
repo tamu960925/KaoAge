@@ -1,4 +1,5 @@
 # KaoAge Face Insights SDK
+[![codecov](https://codecov.io/gh/tamu960925/KaoAge/branch/main/graph/badge.svg)](https://codecov.io/gh/tamu960925/KaoAge)
 
 Face Insights SDK は、店舗向けの年齢確認・顧客案内体験を支援するオンデバイス顔解析ライブラリです。CameraX などで取得したフレームをホストアプリから渡すだけで、顔ランドマーク・姿勢・年齢帯・性別推定・ベストショット判定を同時に取得できます。
 
