@@ -18,6 +18,8 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+private const val FACE_CROP_TOP_OFFSET_PX = 5
+
 interface AgeGenderEstimator {
     suspend fun estimate(frame: FrameInput, detection: DetectionResult, config: DetectionSessionConfig): AgeGenderEstimate
 }
@@ -233,7 +235,11 @@ internal object ImageProxyFaceCropper : FaceCropper {
         } else {
             bitmap
         }
-        val rect = detection.boundingBox.toRect().clamp(rotated.width, rotated.height) ?: run {
+        val rect = detection.boundingBox.toCropRectWithTopOffset(
+            offsetPx = FACE_CROP_TOP_OFFSET_PX,
+            maxWidth = rotated.width,
+            maxHeight = rotated.height
+        ) ?: run {
             rotated.recycle()
             return null
         }
@@ -262,6 +268,19 @@ class DefaultInterpreterFactory : InterpreterFactory {
             }
         }
     }
+}
+
+internal fun BoundingBox.toCropRectWithTopOffset(
+    offsetPx: Int,
+    maxWidth: Int,
+    maxHeight: Int
+): Rect? {
+    val rect = toRect()
+    if (offsetPx == 0) {
+        return rect.clamp(maxWidth, maxHeight)
+    }
+    val offsetRect = Rect(rect.left, rect.top + offsetPx, rect.right, rect.bottom + offsetPx)
+    return offsetRect.clamp(maxWidth, maxHeight)
 }
 
 private fun BoundingBox.toRect(): Rect =
