@@ -54,11 +54,14 @@ private fun Project.configureAndroidJacoco() {
                 html.required.set(true)
             }
 
+            val coverageExcludes = coverageExclusionPatterns()
             val javaClasses = fileTree("${buildDir}/intermediates/javac/debug/classes") {
                 excludeGeneratedClasses()
+                exclude(coverageExcludes)
             }
             val kotlinClasses = fileTree("${buildDir}/tmp/kotlin-classes/debug") {
                 excludeGeneratedClasses()
+                exclude(coverageExcludes)
             }
 
             classDirectories.setFrom(files(javaClasses, kotlinClasses))
@@ -87,3 +90,12 @@ private fun Project.configureAndroidJacoco() {
 private fun ConfigurableFileTree.excludeGeneratedClasses() {
     exclude("**/R.class", "**/R$*.class", "**/Manifest*.*", "**/BuildConfig.*", "**/*\$inlined\$*")
 }
+
+private fun coverageExclusionPatterns(): List<String> = listOf(
+    "**/AgeRegressionEstimator*.class",
+    "**/ImageProxyUtils.class",
+    "**/MlKitFaceAnalyzer*.class",
+    "**/FaceInsightsAnalyzer*.class",
+    "**/ImageProxyFaceCropper*.class",
+    "**/DefaultInterpreterFactory*.class"
+)
