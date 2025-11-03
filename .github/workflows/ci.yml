@@ -31,6 +31,16 @@ jobs:
             sdk-bestshot:jacocoDebugUnitTestReport
             samples:cashier-app:jacocoDebugUnitTestReport
 
+      - name: Upload test results to Codecov
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: |
+            sdk-core/build/test-results/testDebugUnitTest/*.xml
+            sdk-bestshot/build/test-results/testDebugUnitTest/*.xml
+            samples/cashier-app/build/test-results/testDebugUnitTest/*.xml
+          fail_ci_if_error: true
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
